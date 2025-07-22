@@ -18,6 +18,8 @@ find_package(spdlog 1.15 REQUIRED)
 
 add_executable(${PROJECT_NAME}
         src/main.cpp
+        src/resources.h
+        src/resources.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

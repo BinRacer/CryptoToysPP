@@ -6,56 +6,105 @@ def main():
     root_dir = Path(__file__).parent.parent
     ui_dir = root_dir / "ui"
     header_path = root_dir / "src/resources.h"
+    cpp_path = root_dir / "src/resources.cpp"  # 新增.cpp文件存储数据
 
     # 确保输出目录存在
     header_path.parent.mkdir(parents=True, exist_ok=True)
+    cpp_path.parent.mkdir(parents=True, exist_ok=True)
 
     resource_map = {}
+    resource_data = []
+    current_offset = 0
+
+    # 收集所有UI文件并按路径排序保证稳定性
+    ui_files = []
     for root, _, files in os.walk(ui_dir):
         for file in files:
-            # 获取相对路径并转换为POSIX格式
-            rel_path = os.path.relpath(os.path.join(root, file), ui_dir)
-            # 添加前导斜杠作为统一路径前缀
+            full_path = os.path.join(root, file)
+            rel_path = os.path.relpath(full_path, ui_dir)
             posix_path = f"/{rel_path.replace('\\', '/')}"
+            ui_files.append((posix_path, full_path))
 
-            # 读取文件内容
-            with open(os.path.join(root, file), 'rb') as f:
-                content = f.read()
+    # 按路径排序保证数据顺序一致性
+    ui_files.sort(key=lambda x: x[0])
 
-            # 将字节转换为十六进制字符串表示，每256个字节添加换行符
-            hex_lines = []
-            line_break = 256  # 每256字节换行
-            chunk_count = (len(content) + line_break - 1) // line_break
+    for posix_path, full_path in ui_files:
+        # 读取文件内容
+        with open(full_path, 'rb') as f:
+            content = f.read()
 
-            for i in range(chunk_count):
-                start = i * line_break
-                end = min((i + 1) * line_break, len(content))
-                chunk = content[start:end]
-                hex_line = ", ".join(f'0x{b:02X}' for b in chunk)
-                hex_lines.append(hex_line)
+        # 添加到数据池并记录位置/长度
+        resource_data.append(content)
+        resource_map[posix_path] = (current_offset, len(content))
+        current_offset += len(content)
 
-            # 连接所有行，添加缩进
-            formatted_hex = ",\n            ".join(hex_lines)
-            resource_map[posix_path] = f'{{\n            {formatted_hex}\n        }}'
+    # 生成.cpp资源数据文件
+    with open(cpp_path, 'w', encoding='utf-8', newline='\n') as cpp:
+        cpp.write('#include "resources.h"\n\n')
+        cpp.write('namespace {\n')
+        cpp.write('    // 编译期初始化的资源数据池\n')
+        cpp.write('    constexpr uint8_t RESOURCE_DATA_ARRAY[] = {\n')
 
-    # 关键更新：使用LF换行和UTF-8无BOM编码
-    with open(header_path, 'w', encoding='utf-8', newline='\n') as f:
-        f.write("#pragma once\n")
-        f.write("#include <unordered_map>\n")
-        f.write("#include <string>\n")
-        f.write("#include <cstdint>\n")
-        f.write("#include <vector>\n\n")
-        f.write("inline const std::unordered_map<std::string, std::vector<uint8_t>> RESOURCE_MAP = {\n")
+        # 写入所有资源的字节数据
+        byte_counter = 0
+        for data in resource_data:
+            for byte in data:
+                # 每16字节换行
+                if byte_counter % 16 == 0:
+                    cpp.write(f'        ')
 
-        # 写入每个资源条目
-        for path, data in resource_map.items():
-            # 路径转义处理
+                cpp.write(f'0x{byte:02X}, ')
+                byte_counter += 1
+
+                # 处理换行
+                if byte_counter % 16 == 0:
+                    cpp.write('\n')
+
+        # 处理最后一行
+        if byte_counter % 16 != 0:
+            cpp.write('\n')
+        cpp.write('    };\n}\n\n')
+
+        # 在头文件中声明数据结构
+        cpp.write('const resources::ResourceData resources::RESOURCE_DATA = {\n')
+        cpp.write('    .data = RESOURCE_DATA_ARRAY,\n')
+        cpp.write(f'    .size = {current_offset}\n')
+        cpp.write('};\n')
+
+    # 生成头文件
+    with open(header_path, 'w', encoding='utf-8', newline='\n') as header:
+        header.write("#pragma once\n")
+        header.write("#include <cstdint>\n")
+        header.write("#include <unordered_map>\n")
+        header.write("#include <string>\n")
+        header.write("#include <utility>\n\n")
+
+        # 声明命名空间防止冲突
+        header.write("namespace resources {\n\n")
+
+        # 定义数据结构
+        header.write("struct ResourceData {\n")
+        header.write("    const uint8_t* data;  // 资源数据指针\n")
+        header.write("    const size_t size;     // 总数据大小\n")
+        header.write("};\n\n")
+
+        # 声明外部常量
+        header.write("// 编译期初始化的资源数据\n")
+        header.write("extern const ResourceData RESOURCE_DATA;\n\n")
+
+        header.write("// 资源路径到(偏移, 长度)的映射\n")
+        header.write("inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {\n")
+
+        # 写入资源映射表
+        for path, (offset, length) in resource_map.items():
             safe_path = path.replace('"', '\\"')
-            f.write(f'    {{ "{safe_path}", std::vector<uint8_t>{data} }},\n')
+            header.write(f'    {{ "{safe_path}", {{ {offset}, {length} }} }},\n')
 
-        f.write("};\n")
+        header.write("};\n\n")
+        header.write("} // namespace resources\n")
 
-    print(f"资源头文件已生成: {header_path} (UTF-8无BOM, LF换行)")
+    print(f"资源头文件已生成: {header_path}")
+    print(f"资源数据文件已生成: {cpp_path}")
 
 if __name__ == "__main__":
     main()
