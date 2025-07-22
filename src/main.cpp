@@ -10,6 +10,9 @@
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/strconv.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 using json = nlohmann::json;
 
@@ -31,7 +34,6 @@ public:
         json response;
         try {
             std::string path = request.at("path").get<std::string>();
-            std::string method = request.at("method").get<std::string>();
             json data = request.value("data", json::object());
 
             auto it = apiMap.find(path);
@@ -116,17 +118,17 @@ public:
                                 wxSize(800, 600), backend, wxBORDER_NONE);
 
         if (!webview) {
-            wxMessageBox("无法创建WebView组件，请检查配置", "初始化错误", wxOK | wxICON_ERROR);
+            spdlog::error("无法创建WebView组件，请检查配置");
             Close(true);
             return;
         }
 
-        webview->EnableContextMenu(false);
         webview->SetUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
 
         webview->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &MyFrame::OnScriptMessage, this, webview->GetId());
         webview->AddScriptMessageHandler("wx");
         webview->Bind(wxEVT_WEBVIEW_ERROR, &MyFrame::OnWebViewError, this);
+        webview->Bind(wxEVT_WEBVIEW_LOADED, &MyFrame::OnWebViewLoaded, this);
 
         CreateHtmlFile();
         webview->LoadURL(wxFileName(tempHtmlPath).GetFullPath());
@@ -184,7 +186,11 @@ public:
     }
 
     void OnWebViewError(wxWebViewEvent& evt) {
-        wxLogError("WebView错误: %s", evt.GetString());
+        spdlog::error("WebView错误: {}", evt.GetString().ToStdString());
+    }
+
+    void OnWebViewLoaded(wxWebViewEvent& evt) {
+        spdlog::info("HTML页面加载成功: {}", evt.GetURL().ToStdString());
     }
 
     wxString EscapeJavascriptString(const std::string& str) {
@@ -213,12 +219,24 @@ private:
         wxString tempDir = wxStandardPaths::Get().GetTempDir();
         tempHtmlPath = wxFileName(tempDir, "wxwebview_vue_app.html").GetFullPath();
 
+        // 确保目录存在
+        if (!wxDirExists(tempDir)) {
+            wxMkdir(tempDir);
+        }
+
+        // 使用wxFile确保文件正确写入
         wxFile htmlFile;
         if (htmlFile.Create(tempHtmlPath, true)) {
             wxString content = GenerateHtmlContent();
             wxScopedCharBuffer utf8Buffer = content.utf8_str();
-            htmlFile.Write(utf8Buffer.data(), utf8Buffer.length());
+            if (htmlFile.Write(utf8Buffer.data(), utf8Buffer.length())) {
+                spdlog::info("HTML文件创建成功: {}", tempHtmlPath.ToStdString());
+            } else {
+                spdlog::error("无法写入文件: {}", tempHtmlPath.ToStdString());
+            }
             htmlFile.Close();
+        } else {
+            spdlog::error("无法创建文件: {}", tempHtmlPath.ToStdString());
         }
     }
 
@@ -426,8 +444,42 @@ private:
 class MyApp : public wxApp {
 public:
     bool OnInit() override {
-        wxLog::SetLogLevel(wxLOG_Max);
-        wxLog::EnableLogging();
+        // 创建日志目录
+        wxString logDir = wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
+        if (!wxDirExists(logDir)) {
+            wxMkdir(logDir);
+        }
+
+        // 设置日志文件路径
+        wxString logPath = logDir + wxFileName::GetPathSeparator() + "app.log";
+
+        try {
+            // 创建旋转文件日志记录器（最大5MB，保留3个备份）
+            auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+                logPath.ToStdString(), 1024 * 1024 * 5, 3);
+
+            // 创建控制台日志记录器
+            auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+            // 创建组合日志记录器
+            std::vector<spdlog::sink_ptr> sinks{file_sink, console_sink};
+            auto logger = std::make_shared<spdlog::logger>("main_logger", sinks.begin(), sinks.end());
+
+            // 设置日志格式（精确到毫秒）
+            logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
+
+            // 设置日志级别
+            logger->set_level(spdlog::level::trace);
+
+            // 注册为默认日志记录器
+            spdlog::set_default_logger(logger);
+
+            spdlog::info("日志系统初始化成功，日志文件: {}", logPath.ToStdString());
+        }
+        catch (const spdlog::spdlog_ex& ex) {
+            std::cerr << "日志初始化失败: " << ex.what() << std::endl;
+            return false;
+        }
 
         #ifdef __WXOSX__
             wxWebView::SetBackend(wxWebViewBackendWebKit);
@@ -435,6 +487,12 @@ public:
 
         MyFrame* frame = new MyFrame();
         return frame != nullptr;
+    }
+
+    int OnExit() override {
+        // 程序退出时刷新并关闭日志记录器
+        spdlog::shutdown();
+        return wxApp::OnExit();
     }
 };
 
