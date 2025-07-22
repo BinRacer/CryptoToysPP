@@ -2,7 +2,7 @@
 #include <wx/webview.h>
 #include <wx/mstream.h>
 #include <wx/datetime.h>
-#include <wx/filesys.h> // 添加必要的头文件声明
+#include <wx/filesys.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <chrono>
@@ -27,8 +27,17 @@ public:
 
     virtual wxFSFile* GetFile(const wxString& uri) {
         // 解析请求路径: "app://path/to/file"
-        wxString path = uri.AfterFirst(':').AfterFirst('/'); // 解析出 "path/to/file"
+        wxString path = uri.AfterFirst(':');
+
+        // 移除协议后的所有前导斜杠
+        while (path.StartsWith("/")) {
+            path = path.Mid(1);
+        }
+
+        // 添加前导斜杠作为统一路径前缀
+        path = "/" + path;
         path.Replace("\\", "/", true); // 统一路径格式
+
         const std::string key = path.ToStdString();
 
         spdlog::info("资源请求: {}", key);
