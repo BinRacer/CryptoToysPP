@@ -5,8 +5,8 @@ from pathlib import Path
 def main():
     root_dir = Path(__file__).parent.parent
     ui_dir = root_dir / "ui"
-    header_path = root_dir / "src/resources.h"
-    cpp_path = root_dir / "src/resources.cpp"  # 新增.cpp文件存储数据
+    header_path = root_dir / "src/resources/resources.h"
+    cpp_path = root_dir / "src/resources/resources.cpp"  # 新增.cpp文件存储数据
 
     # 确保输出目录存在
     header_path.parent.mkdir(parents=True, exist_ok=True)
@@ -41,7 +41,7 @@ def main():
     # 生成.cpp资源数据文件
     with open(cpp_path, 'w', encoding='utf-8', newline='\n') as cpp:
         cpp.write('#include "resources.h"\n\n')
-        cpp.write('namespace {\n')
+        cpp.write('namespace CryptoToysPP::Resources {\n')
         cpp.write('    // 编译期初始化的资源数据池\n')
         cpp.write('    constexpr uint8_t RESOURCE_DATA_ARRAY[] = {\n')
 
@@ -63,13 +63,13 @@ def main():
         # 处理最后一行
         if byte_counter % 16 != 0:
             cpp.write('\n')
-        cpp.write('    };\n}\n\n')
+        cpp.write('    };\n\n')
 
         # 在头文件中声明数据结构
-        cpp.write('const resources::ResourceData resources::RESOURCE_DATA = {\n')
-        cpp.write('    .data = RESOURCE_DATA_ARRAY,\n')
-        cpp.write(f'    .size = {current_offset}\n')
-        cpp.write('};\n')
+        cpp.write('    const ResourceData RESOURCE_DATA = {\n')
+        cpp.write('        .data = RESOURCE_DATA_ARRAY,\n')
+        cpp.write(f'        .size = {current_offset}\n')
+        cpp.write('    };\n} // namespace CryptoToysPP::Resources\n')
 
     # 生成头文件
     with open(header_path, 'w', encoding='utf-8', newline='\n') as header:
@@ -80,28 +80,28 @@ def main():
         header.write("#include <utility>\n\n")
 
         # 声明命名空间防止冲突
-        header.write("namespace resources {\n\n")
+        header.write("namespace CryptoToysPP::Resources {\n")
 
         # 定义数据结构
-        header.write("struct ResourceData {\n")
-        header.write("    const uint8_t* data;  // 资源数据指针\n")
-        header.write("    const size_t size;     // 总数据大小\n")
-        header.write("};\n\n")
+        header.write("    struct ResourceData {\n")
+        header.write("        const uint8_t* data;   // 资源数据指针\n")
+        header.write("        const size_t size;     // 总数据大小\n")
+        header.write("    };\n\n")
 
         # 声明外部常量
-        header.write("// 编译期初始化的资源数据\n")
-        header.write("extern const ResourceData RESOURCE_DATA;\n\n")
+        header.write("    // 编译期初始化的资源数据\n")
+        header.write("    extern const ResourceData RESOURCE_DATA;\n\n")
 
-        header.write("// 资源路径到(偏移, 长度)的映射\n")
-        header.write("inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {\n")
+        header.write("    // 资源路径到(偏移, 长度)的映射\n")
+        header.write("    inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {\n")
 
         # 写入资源映射表
         for path, (offset, length) in resource_map.items():
             safe_path = path.replace('"', '\\"')
-            header.write(f'    {{ "{safe_path}", {{ {offset}, {length} }} }},\n')
+            header.write(f'        {{ "{safe_path}", {{ {offset}, {length} }} }},\n')
 
-        header.write("};\n\n")
-        header.write("} // namespace resources\n")
+        header.write("    };\n")
+        header.write("} // namespace CryptoToysPP::Resources\n")
 
     print(f"资源头文件已生成: {header_path}")
     print(f"资源数据文件已生成: {cpp_path}")

@@ -7,8 +7,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
 find_package(wxWidgets 3.3 CONFIG REQUIRED COMPONENTS
-        core
-        base
         webview
 )
 
@@ -16,10 +14,20 @@ find_package(nlohmann_json 3.12 REQUIRED)
 
 find_package(spdlog 1.15 REQUIRED)
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 add_executable(${PROJECT_NAME}
         src/main.cpp
-        src/resources.h
-        src/resources.cpp
+        src/resources/resources.h
+        src/resources/resources.cpp
+        src/route/handler.cpp
+        src/route/handler.h
+        src/route/route.cpp
+        src/route/route.h
+        src/gui/frame.cpp
+        src/gui/frame.h
+        src/gui/app.cpp
+        src/gui/app.h
 )
 
 target_link_libraries(${PROJECT_NAME}
