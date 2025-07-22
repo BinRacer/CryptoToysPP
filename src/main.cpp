@@ -131,6 +131,9 @@ public:
         CreateHtmlFile();
         webview->LoadURL(wxFileName(tempHtmlPath).GetFullPath());
 
+        webview->EnableContextMenu(true);
+        webview->EnableAccessToDevTools(true);
+
         SetSize(800, 600);
         Center();
         Show();
