@@ -34,25 +34,27 @@
 
 namespace CryptoToysPP::Gui {
     bool App::OnInit() {
-        wxString logDir = wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
+        const wxString logDir =
+                wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
         if (!wxDirExists(logDir))
             wxMkdir(logDir);
 
-        wxString logPath = logDir + wxFileName::GetPathSeparator() + "app.log";
+        const wxString logPath =
+                logDir + wxFileName::GetPathSeparator() + "app.log";
         try {
-            auto file_sink =
+            const auto file_sink =
                     std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                             logPath.ToStdString(), 1024 * 1024 * 5, 3);
-            auto console_sink =
+            const auto console_sink =
                     std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
             std::vector<spdlog::sink_ptr> sinks{file_sink, console_sink};
-            auto logger = std::make_shared<spdlog::logger>("main_logger",
-                                                           sinks.begin(),
-                                                           sinks.end());
+            const auto logger = std::make_shared<spdlog::logger>("main_logger",
+                                                                 sinks.begin(),
+                                                                 sinks.end());
             logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
             logger->set_level(spdlog::level::trace);
             spdlog::set_default_logger(logger);
-            spdlog::info("日志系统初始化成功");
+            spdlog::debug("日志系统初始化成功");
         } catch (const spdlog::spdlog_ex &ex) {
             std::cerr << "日志初始化失败: " << ex.what() << std::endl;
             return false;

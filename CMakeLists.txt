@@ -9,9 +9,8 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 find_package(wxWidgets 3.3 CONFIG REQUIRED COMPONENTS
         webview
 )
-
 find_package(nlohmann_json 3.12 REQUIRED)
-
+find_package(cryptopp 8.9 REQUIRED)
 find_package(spdlog 1.15 REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
@@ -28,11 +27,14 @@ add_executable(${PROJECT_NAME}
         src/gui/frame.h
         src/gui/app.cpp
         src/gui/app.h
+        src/base/base64.cpp
+        src/base/base64.h
 )
 
 target_link_libraries(${PROJECT_NAME}
         ${wxWidgets_LIBRARIES}
         nlohmann_json::nlohmann_json
         spdlog::spdlog
+        cryptopp
 )
 

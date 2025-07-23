@@ -39,8 +39,8 @@ namespace CryptoToysPP::Route {
             // 解析请求路径并执行安全验证
             ValidationResult pathResult = ValidateResourcePath(uri);
             if (!pathResult.valid) {
-                spdlog::warn("路径验证失败: {} - {}", uri.ToStdString(),
-                             pathResult.message);
+                spdlog::error("路径验证失败: {} - {}", uri.ToStdString(),
+                              pathResult.message);
                 return nullptr;
             }
 
@@ -50,7 +50,7 @@ namespace CryptoToysPP::Route {
             // 安全获取资源描述符
             ResourceDescriptor descriptor = GetResourceDescriptor(key);
             if (!descriptor.valid) {
-                spdlog::warn(descriptor.message);
+                spdlog::error("获取资源描述符失败: {}", descriptor.message);
                 return nullptr;
             }
 
@@ -180,4 +180,4 @@ namespace CryptoToysPP::Route {
             return "image/x-icon";
         return "application/octet-stream";
     }
-} // namespace CryptoToysPP
+} // namespace CryptoToysPP::Route

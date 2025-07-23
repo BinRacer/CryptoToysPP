@@ -27,21 +27,18 @@
 /* clang-format on */
 #include "frame.h"
 #include "route/handler.h"
+#include "base/base64.h"
 #include <spdlog/spdlog.h>
-#include <wx/base64.h>
-using json = nlohmann::json;
 namespace CryptoToysPP::Gui {
     MainFrame::MainFrame() :
         wxFrame(nullptr, wxID_ANY, "wxWebView + Optimized Resource Protocol") {
-
-        spdlog::info("MainFrame 构造函数开始");
         InitWebView();
-        spdlog::info("MainFrame 初始化完成");
+        spdlog::debug("MainFrame 初始化完成");
     }
 
     void MainFrame::InitWebView() {
-        spdlog::info("初始化 WebView");
-
+        spdlog::debug("开始初始化 WebView");
+        // 选择最佳的后端
         wxString backend = wxWebViewBackendDefault;
         if (wxWebView::IsBackendAvailable(wxWebViewBackendEdge)) {
             backend = wxWebViewBackendEdge;
@@ -53,6 +50,7 @@ namespace CryptoToysPP::Gui {
             spdlog::debug("使用默认 WebView 后端");
         }
 
+        // 创建 WebView 组件
         webview =
                 wxWebView::New(this, wxID_ANY, wxEmptyString, wxDefaultPosition,
                                wxSize(800, 600), backend, wxBORDER_NONE);
@@ -64,15 +62,18 @@ namespace CryptoToysPP::Gui {
         }
         spdlog::debug("WebView 创建成功");
 
+        // 注册自定义协议处理器
         webview->RegisterHandler(
                 wxSharedPtr<wxWebViewHandler>(new Route::SchemeHandler()));
         spdlog::debug("注册自定义协议处理器");
 
+        // 设置用户代理
         webview->SetUserAgent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
         spdlog::debug("设置 UserAgent");
 
+        // 绑定事件处理函数
         webview->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED,
                       &MainFrame::OnScriptMessage, this, webview->GetId());
         webview->AddScriptMessageHandler("CryptoToysPP");
@@ -81,146 +82,99 @@ namespace CryptoToysPP::Gui {
         webview->Bind(wxEVT_WEBVIEW_ERROR, &MainFrame::OnWebViewError, this);
         webview->Bind(wxEVT_WEBVIEW_LOADED, &MainFrame::OnWebViewLoaded, this);
 
-        spdlog::debug("加载 URL: app://index.html");
+        // 加载初始页面
+        spdlog::debug("加载应用首页");
         webview->LoadURL("app://index.html");
 
+        // 启用开发者工具
         webview->EnableContextMenu(true);
         webview->EnableAccessToDevTools(true);
         spdlog::debug("启用上下文菜单和开发者工具");
 
+        // 设置窗口属性
         SetSize(800, 600);
         Center();
         Show();
-        spdlog::info("主窗口显示完成");
+        spdlog::debug("主窗口显示完成");
     }
 
     void MainFrame::OnScriptMessage(wxWebViewEvent &evt) {
-        spdlog::debug("收到脚本消息");
-
-        wxString handler = evt.GetMessageHandler();
+        spdlog::debug("收到 JS 消息");
+        const wxString &handler = evt.GetMessageHandler();
         if (handler == "CryptoToysPP") {
-            spdlog::debug("处理 CryptoToysPP 消息");
-
+            spdlog::debug("开始处理 CryptoToysPP 消息");
             try {
-                // 获取Base64编码的请求数据
-                wxString base64Payload = evt.GetString();
+                // 获取并解码请求数据
+                std::string base64Payload = evt.GetString().ToStdString();
+                spdlog::info("Base64 原始请求: {}", base64Payload);
+                std::string requestJson = Base::Base64::Decode(base64Payload);
+                spdlog::info("Json 原始请求: {}", requestJson);
 
-                // 关键修复：正确解码Base64数据
-                wxMemoryBuffer buffer = wxBase64Decode(base64Payload);
-                wxString decodedPayload =
-                        wxString::FromUTF8(static_cast<const char *>(
-                                                   buffer.GetData()),
-                                           buffer.GetDataLen());
-
-                std::string requestJson = decodedPayload.ToUTF8().data();
-                spdlog::trace("原始请求 JSON: {}", requestJson);
-
-                std::string requestId = "";
-
+                std::string requestId;
+                nlohmann::json request;
                 // 提取请求ID
                 try {
-                    json request = json::parse(requestJson);
+                    request = nlohmann::json::parse(requestJson);
                     requestId = request.value("__id", "");
-                    spdlog::debug("提取请求 ID: {}", requestId);
-                    spdlog::trace("请求数据: {}", request.dump());
+                    spdlog::info("提取请求ID: {}", requestId);
+                } catch (const std::exception &e) {
+                    spdlog::error("解析请求数据异常: {}", e.what());
+                    ErrResp(requestId, e.what());
+                    return;
                 } catch (...) {
-                    spdlog::warn("无法提取请求 ID");
+                    spdlog::error("解析请求数据未知异常");
+                    ErrResp(requestId, "解析请求数据未知异常");
+                    return;
                 }
 
-                // 直接处理请求
-                spdlog::debug("直接处理请求 ID: {}", requestId);
-
+                // 处理请求
                 try {
-                    json request = json::parse(requestJson);
-                    spdlog::trace("解析请求 JSON 成功");
-
-                    spdlog::debug("处理请求路径: {}",
-                                  request.value("path", ""));
-                    json response = route.ProcessRequest(request);
-                    spdlog::debug("请求处理完成");
-
-                    // 将响应转换为Base64编码
-                    std::string responseJson = response.dump();
-
-                    // 关键修复：使用 wxMemoryBuffer 包装数据
-                    wxMemoryBuffer buffer;
-                    buffer.AppendData(responseJson.data(), responseJson.size());
-                    wxString base64Response = wxBase64Encode(buffer);
-
-                    // 发送响应 - 使用Base64编码
-                    wxString script = wxString::Format(
-                            "window.rest.resolveInvoke('%s', '%s');",
-                            base64Response, requestId);
-
-                    spdlog::trace("执行脚本: {}", script.ToStdString());
-                    webview->RunScriptAsync(script);
-                    spdlog::debug("响应脚本已执行");
+                    spdlog::info("开始处理请求: {}", requestId);
+                    nlohmann::json response = route.ProcessRequest(request);
+                    spdlog::info("完成处理请求: {}", requestId);
+                    OkResp(requestId, response);
                 } catch (const std::exception &e) {
-                    spdlog::error("请求处理异常: {}", e.what());
-
-                    json errorResponse = {{"code", 500},
-                                          {"message", e.what()},
-                                          {"data", json::object()}};
-
-                    // 将错误响应转换为Base64编码
-                    std::string errorJson = errorResponse.dump();
-
-                    // 关键修复：使用 wxMemoryBuffer 包装数据
-                    wxMemoryBuffer errorBuffer;
-                    errorBuffer.AppendData(errorJson.data(), errorJson.size());
-                    wxString base64Error = wxBase64Encode(errorBuffer);
-
-                    // 发送错误响应 - 使用Base64编码
-                    wxString errorScript = wxString::Format(
-                            "window.rest.rejectInvoke('%s', '%s');",
-                            base64Error, requestId);
-
-                    spdlog::trace("执行错误脚本: {}",
-                                  errorScript.ToStdString());
-                    webview->RunScriptAsync(errorScript);
-                    spdlog::debug("错误响应脚本已执行");
+                    spdlog::error("请求处理异常: {} - {}", requestId, e.what());
+                    ErrResp(requestId, e.what());
                 }
             } catch (const std::exception &e) {
                 spdlog::error("请求解析异常: {}", e.what());
-
-                json errorResponse = {{"code", 500},
-                                      {"message", e.what()},
-                                      {"data", json::object()}};
-
-                std::string requestId = "";
-                try {
-                    wxString base64Payload = evt.GetString();
-                    wxMemoryBuffer buffer = wxBase64Decode(base64Payload);
-                    wxString decodedPayload =
-                            wxString::FromUTF8(static_cast<const char *>(
-                                                       buffer.GetData()),
-                                               buffer.GetDataLen());
-                    std::string requestJson = decodedPayload.ToUTF8().data();
-                    json request = json::parse(requestJson);
-                    requestId = request.value("__id", "");
-                } catch (...) {
-                    spdlog::warn("无法提取请求 ID");
-                }
-
-                spdlog::debug("直接处理错误响应 ID: {}", requestId);
-
-                // 将错误响应转换为Base64编码
-                std::string errorJson = errorResponse.dump();
-
-                // 关键修复：使用 wxMemoryBuffer 包装数据
-                wxMemoryBuffer errorBuffer;
-                errorBuffer.AppendData(errorJson.data(), errorJson.size());
-                wxString base64Error = wxBase64Encode(errorBuffer);
-
-                wxString errorScript = wxString::Format(
-                        "window.rest.rejectInvoke('%s', '%s');", base64Error,
-                        requestId);
-
-                spdlog::trace("执行错误脚本: {}", errorScript.ToStdString());
-                webview->RunScriptAsync(errorScript);
-                spdlog::debug("错误响应脚本已执行");
+                ErrResp("", e.what());
             }
         }
+    }
+
+    // 发送正常响应
+    void MainFrame::OkResp(const std::string &requestId,
+                           const nlohmann::json &response) {
+        spdlog::info("开始发送正常响应, 请求ID: {}", requestId);
+        std::string responseJson = response.dump();
+        spdlog::info("JSon 原始响应内容: {}", responseJson);
+        std::string base64Response = Base::Base64::Encode(responseJson);
+        spdlog::info("Base64 加密响应内容: {}", base64Response);
+        wxString script =
+                wxString::Format("window.rest.resolveInvoke('%s', '%s');",
+                                 base64Response, requestId);
+        webview->RunScriptAsync(script);
+        spdlog::info("完成发送正常响应, 请求ID: {}", requestId);
+    }
+
+    // 发送错误响应
+    void MainFrame::ErrResp(const std::string &requestId,
+                            const std::string &message) {
+        spdlog::error("开始发送错误响应, 请求ID: {}", requestId);
+        nlohmann::json response = {{"code", 500},
+                                   {"message", message},
+                                   {"data", nlohmann::json::object()}};
+        std::string responseJson = response.dump();
+        spdlog::error("JSon 原始响应内容: {}", responseJson);
+        std::string base64Response = Base::Base64::Decode(responseJson);
+        spdlog::error("Base64 加密响应内容: {}", base64Response);
+        wxString errorScript =
+                wxString::Format("window.rest.rejectInvoke('%s', '%s');",
+                                 base64Response, requestId);
+        webview->RunScriptAsync(errorScript);
+        spdlog::error("完成发送错误响应, 请求ID: {}", requestId);
     }
 
     void MainFrame::OnWebViewError(wxWebViewEvent &evt) {
@@ -231,8 +185,8 @@ namespace CryptoToysPP::Gui {
     }
 
     void MainFrame::OnWebViewLoaded(wxWebViewEvent &evt) {
-        wxString urlStr = evt.GetURL();
-        spdlog::info("HTML页面加载成功: {}", urlStr.ToUTF8().data());
+        const wxString &urlStr = evt.GetURL();
+        spdlog::info("页面加载成功: {}", urlStr.ToUTF8().data());
         spdlog::debug("加载状态: {}", evt.GetInt());
     }
 } // namespace CryptoToysPP::Gui
