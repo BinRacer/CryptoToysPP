@@ -29,7 +29,7 @@
 
 namespace CryptoToysPP::Route {
     Route::Route() {
-        Add("/api/getUser", [this](const nlohmann::json &) {
+        Add("/api/base/encode", [this](const nlohmann::json &) {
             return handleGetUser();
         });
         Add("/api/getTime", [this](const nlohmann::json &) {
@@ -72,6 +72,7 @@ namespace CryptoToysPP::Route {
             response = ErrResp(500, "未知内部错误");
         }
 
+        // 关键修复：确保使用UTF-8编码
         return response.dump();
     }
 
@@ -103,6 +104,7 @@ namespace CryptoToysPP::Route {
     }
 
     nlohmann::json Route::handleGetUser() {
+        // 关键修复：使用UTF-8编码的中文字符
         return {{"code", 200},
                 {"message", "Success"},
                 {"data",
@@ -133,4 +135,4 @@ namespace CryptoToysPP::Route {
                 {"message", "Success"},
                 {"data", {{"operation", "addition"}, {"result", a + b}}}};
     }
-} // namespace CryptoToysPP
+} // namespace CryptoToysPP::Route

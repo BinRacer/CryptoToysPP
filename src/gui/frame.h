@@ -33,7 +33,7 @@
 namespace CryptoToysPP::Gui {
     class MainFrame : public wxFrame {
     private:
-        wxWebView *webview;
+        wxWebView *webview = nullptr;
         Route::Route route;
 
     public:
@@ -46,8 +46,6 @@ namespace CryptoToysPP::Gui {
         void OnWebViewError(wxWebViewEvent &evt);
 
         void OnWebViewLoaded(wxWebViewEvent &evt);
-
-        wxString EscapeJavascriptString(const std::string &str);
     };
 } // namespace CryptoToysPP
 
