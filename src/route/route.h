@@ -33,29 +33,49 @@
 #include <nlohmann/json.hpp>
 namespace CryptoToysPP::Route {
     using HandlerFunc = std::function<nlohmann::json(const nlohmann::json &)>;
+    struct PairHash {
+        size_t operator()(const std::pair<std::string, std::string> &p) const {
+            // 使用黄金比例常数进行哈希组合
+            constexpr size_t Golden = 0x9e3779b97f4a7c15;
+
+            // 计算两个字符串的独立哈希值
+            const size_t h1 = std::hash<std::string>{}(p.first);
+            const size_t h2 = std::hash<std::string>{}(p.second);
+
+            // 使用黄金比例常数进行组合
+            return h1 ^ (h2 + Golden + (h1 << 6) + (h1 >> 2));
+        }
+    };
     class Route {
     private:
-        std::unordered_map<std::string, HandlerFunc> routes;
+        std::unordered_map<std::pair<std::string, std::string>,
+                           HandlerFunc,
+                           PairHash>
+                routes;
         // 限流设置
-        static constexpr int MAX_REQUESTS = 10;
+        static constexpr int MAX_REQUESTS = 100;
         static constexpr auto TIME_WINDOW = std::chrono::seconds(1);
         std::unordered_map<std::string,
                            std::queue<std::chrono::steady_clock::time_point>>
-                rateLimits;
+                rateLimits{};
 
     public:
         Route();
 
-        void Add(const std::string &path, const HandlerFunc &handler);
+        nlohmann::json handleGetUser();
 
-        std::string ProcessRequest(const nlohmann::json &request);
+        void Add(const std::string &method,
+                 const std::string &path,
+                 const HandlerFunc &handler);
 
-        nlohmann::json ErrResp(int code, const std::string &message);
+        nlohmann::json ProcessRequest(const nlohmann::json &request);
 
     private:
         bool CheckRateLimit(const std::string &path);
 
-        nlohmann::json handleGetUser();
+        nlohmann::json MakeOkResp(int code, const nlohmann::json &data);
+
+        nlohmann::json MakeErrResp(int code, const std::string &message);
     };
 } // namespace CryptoToysPP::Route
 

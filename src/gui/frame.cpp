@@ -105,35 +105,34 @@ namespace CryptoToysPP::Gui {
         try {
             // 解码和解析请求
             std::string base64Payload = evt.GetString().ToStdString();
+            spdlog::debug("Pre-Base64 request data: {}", base64Payload);
             std::string requestJson = Base::Base64::Decode(base64Payload);
-            spdlog::debug("Raw request data: {}", requestJson);
+            spdlog::debug("Post-Base64 request data: {}", requestJson);
 
-            auto request = nlohmann::json::parse(requestJson);
+            const auto request = nlohmann::json::parse(requestJson);
             requestId = request.value("__id", "");
-            spdlog::info("[{}] Processing request", requestId);
-
             // 路由处理
             const nlohmann::json response = route.ProcessRequest(request);
-            OkResp(requestId, response);
-            spdlog::info("[{}] Request completed", requestId);
-
+            SendOkResp(requestId, response);
         } catch (const nlohmann::json::parse_error &e) {
             spdlog::error("[{}] JSON parse error: {}", requestId, e.what());
-            ErrResp(requestId, "JSON format error: " + std::string(e.what()));
+            SendErrResp(requestId,
+                        "JSON format error: " + std::string(e.what()));
         } catch (const nlohmann::json::type_error &e) {
             spdlog::error("[{}] JSON type error: {}", requestId, e.what());
-            ErrResp(requestId, "Data type error: " + std::string(e.what()));
+            SendErrResp(requestId, "Data type error: " + std::string(e.what()));
         } catch (const std::exception &e) {
             spdlog::error("[{}] Processing error: {}", requestId, e.what());
-            ErrResp(requestId, "Processing failed: " + std::string(e.what()));
+            SendErrResp(requestId,
+                        "Processing failed: " + std::string(e.what()));
         } catch (...) {
             spdlog::error("[{}] Unknown error occurred", requestId);
-            ErrResp(requestId, "Unknown error");
+            SendErrResp(requestId, "Unknown error");
         }
     }
 
-    void MainFrame::OkResp(const std::string &requestId,
-                           const nlohmann::json &response) {
+    void MainFrame::SendOkResp(const std::string &requestId,
+                               const nlohmann::json &response) {
         // 提取原始响应内容
         std::string responseJson = response.dump();
         spdlog::debug("[{}] Pre-Base64 response data: {}", requestId,
@@ -153,12 +152,12 @@ namespace CryptoToysPP::Gui {
         spdlog::debug("[{}] Success response sent", requestId);
     }
 
-    void MainFrame::ErrResp(const std::string &requestId,
-                            const std::string &message) {
+    void MainFrame::SendErrResp(const std::string &requestId,
+                                const std::string &message) {
         // 构建错误响应
-        nlohmann::json response = {{"code", 500},
-                                   {"message", message},
-                                   {"data", nlohmann::json::object()}};
+        const nlohmann::json response = {{"code", 500},
+                                         {"message", message},
+                                         {"data", nlohmann::json::object()}};
 
         // 提取原始响应内容
         std::string responseJson = response.dump();

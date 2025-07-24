@@ -34,72 +34,84 @@ namespace CryptoToysPP::Route {
         spdlog::debug("Initializing route handlers...");
 
         // 注册API端点
-        Add("/api/base/encode", [this](const nlohmann::json &) {
+        Add("POST", "/api/base/encode", [this](const nlohmann::json &) {
             return handleGetUser();
         });
     }
 
-    void Route::Add(const std::string &path, const HandlerFunc &handler) {
-        if (routes.find(path) != routes.end()) {
-            spdlog::warn("Duplicate route handler registered for: {}", path);
-        }
-        routes[path] = handler;
-        spdlog::debug("Registered handler for {}", path);
+    nlohmann::json Route::handleGetUser() {
+        return {"张三"};
     }
 
-    std::string Route::ProcessRequest(const nlohmann::json &request) {
+    void Route::Add(const std::string &method,
+                    const std::string &path,
+                    const HandlerFunc &handler) {
+        const auto key = std::make_pair(method, path);
+        if (routes.contains(key)) {
+            spdlog::warn("Duplicate route handler registered for: {} - {}",
+                         method, path);
+        }
+        routes[key] = handler;
+        spdlog::debug("Registered handler for {} - {}", method, path);
+    }
+
+    nlohmann::json Route::ProcessRequest(const nlohmann::json &request) {
         if (!request.is_object()) {
             spdlog::error("Invalid request: must be a JSON object");
-            return ErrResp(400, "Invalid request format").dump();
+            return MakeErrResp(400, "Invalid request format");
+        }
+        // 验证必需字段
+        if (!request.contains("__id")) {
+            spdlog::error("Missing required field: '__id'");
+            return MakeErrResp(400, "Required field '__id' is missing");
         }
 
+        if (!request.contains("method")) {
+            spdlog::error("Missing required field: 'method'");
+            return MakeErrResp(400, "Required field 'method' is missing");
+        }
+
+        if (!request.contains("path")) {
+            spdlog::error("Missing required field: 'path'");
+            return MakeErrResp(400, "Required field 'path' is missing");
+        }
+        const std::string requestId = request.value("__id", "");
         try {
-            // 验证必需字段
-            if (!request.contains("path")) {
-                spdlog::error("Missing required field: 'path'");
-                return ErrResp(400, "Required field 'path' is missing").dump();
-            }
-
-            const std::string path = request["path"].get<std::string>();
-            spdlog::info("Processing request for: {}", path);
-
+            const std::string method = request.value("method", "");
+            const std::string path = request.value("path", "");
             // 提取请求数据
-            nlohmann::json data =
+            const nlohmann::json data =
                     request.value("data", nlohmann::json::object());
-            spdlog::debug("Request data: {}", data.dump());
-
+            spdlog::info("[{}] Processing request for {} - {} : {}", requestId,
+                         method, path, data.dump());
             // API频率限制
             if (!CheckRateLimit(path)) {
                 spdlog::warn(
-                        "Rate limit exceeded for {} (429 Too Many Requests)",
-                        path);
-                return ErrResp(429, "Too many requests").dump();
+                        "[{}] Rate limit exceeded for {} - {} (429 Too Many "
+                        "Requests)",
+                        requestId, method, path);
+                return MakeErrResp(429, "Too many requests");
             }
-
             // 路由分发
-            if (routes.find(path) != routes.end()) {
-                const auto response = routes[path](data);
-                spdlog::info("Successfully processed {}", path);
-                return response.dump(); // UTF-8确保
+            const auto key = std::make_pair(method, path);
+            if (!routes.contains(key)) {
+                spdlog::warn("[{}] API endpoint not found: {} - {}", requestId,
+                             method, path);
+                return MakeErrResp(404, "API endpoint not found");
             }
-
-            spdlog::warn("API endpoint not found: {}", path);
-            return ErrResp(404, "API endpoint not found").dump();
-
+            const auto response = routes[key](data);
+            spdlog::info("[{}] Successfully processed {} - {} : {}", requestId,
+                         method, path, response.dump());
+            return MakeOkResp(200, response);
         } catch (const std::exception &e) {
-            spdlog::error("Request processing error: {}", e.what());
-            return ErrResp(500, std::string("Internal error: ") + e.what())
-                    .dump();
+            spdlog::error("[{}] Request processing error: {}", requestId,
+                          e.what());
+            return MakeErrResp(500, std::string("Internal error: ") + e.what());
         } catch (...) {
-            spdlog::error("Unknown error during request processing");
-            return ErrResp(500, "Unknown internal error").dump();
+            spdlog::error("[{}] Unknown error during request processing",
+                          requestId);
+            return MakeErrResp(500, "Unknown internal error");
         }
-    }
-
-    nlohmann::json Route::ErrResp(int code, const std::string &message) {
-        return {{"code", code},
-                {"message", message},
-                {"data", nlohmann::json::object()}};
     }
 
     bool Route::CheckRateLimit(const std::string &path) {
@@ -124,14 +136,13 @@ namespace CryptoToysPP::Route {
         return true;
     }
 
-    nlohmann::json Route::handleGetUser() {
-        return {{"code", 200},
-                {"message", "Success"},
-                {"data",
-                 {{"name", "张三"},
-                  {"age", 30},
-                  {"email", "zhangsan@example.com"},
-                  {"department", "Engineering"},
-                  {"employeeId", "EMP007"}}}};
+    nlohmann::json Route::MakeOkResp(int code, const nlohmann::json &data) {
+        return {{"code", code}, {"message", ""}, {"data", data}};
+    }
+
+    nlohmann::json Route::MakeErrResp(int code, const std::string &message) {
+        return {{"code", code},
+                {"message", message},
+                {"data", nlohmann::json::object()}};
     }
 } // namespace CryptoToysPP::Route

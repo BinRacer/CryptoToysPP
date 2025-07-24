@@ -48,10 +48,10 @@ namespace CryptoToysPP::Gui {
         void OnWebViewLoaded(wxWebViewEvent &evt);
 
     private:
-        void OkResp(const std::string &requestId,
+        void SendOkResp(const std::string &requestId,
                     const nlohmann::json &response);
 
-        void ErrResp(const std::string &requestId, const std::string &message);
+        void SendErrResp(const std::string &requestId, const std::string &message);
     };
 } // namespace CryptoToysPP::Gui
 #endif // FRAME_H
