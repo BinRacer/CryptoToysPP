@@ -27,53 +27,73 @@
 /* clang-format on */
 #include "route.h"
 
+#include <spdlog/spdlog.h>
+
 namespace CryptoToysPP::Route {
     Route::Route() {
+        spdlog::debug("Initializing route handlers...");
+
+        // 注册API端点
         Add("/api/base/encode", [this](const nlohmann::json &) {
             return handleGetUser();
-        });
-        Add("/api/getTime", [this](const nlohmann::json &) {
-            return handleGetTime();
-        });
-        Add("/api/calculate", [this](const nlohmann::json &data) {
-            return handleCalculate(data);
         });
     }
 
     void Route::Add(const std::string &path, const HandlerFunc &handler) {
+        if (routes.find(path) != routes.end()) {
+            spdlog::warn("Duplicate route handler registered for: {}", path);
+        }
         routes[path] = handler;
+        spdlog::debug("Registered handler for {}", path);
     }
 
     std::string Route::ProcessRequest(const nlohmann::json &request) {
-        nlohmann::json response;
-        try {
-            if (!request.contains("path")) {
-                return ErrResp(400, "缺少必要参数: path");
-            }
-
-            std::string path = request["path"].get<std::string>();
-            nlohmann::json data =
-                    request.value("data", nlohmann::json::object());
-
-            // API访问频率限制（基本实现）
-            if (!CheckRateLimit(path)) {
-                return ErrResp(429, "请求过于频繁");
-            }
-
-            auto it = routes.find(path);
-            if (it != routes.end()) {
-                response = it->second(data);
-            } else {
-                response = ErrResp(404, "未找到API: " + path);
-            }
-        } catch (const std::exception &e) {
-            response = ErrResp(500, "内部错误: " + std::string(e.what()));
-        } catch (...) {
-            response = ErrResp(500, "未知内部错误");
+        if (!request.is_object()) {
+            spdlog::error("Invalid request: must be a JSON object");
+            return ErrResp(400, "Invalid request format").dump();
         }
 
-        // 关键修复：确保使用UTF-8编码
-        return response.dump();
+        try {
+            // 验证必需字段
+            if (!request.contains("path")) {
+                spdlog::error("Missing required field: 'path'");
+                return ErrResp(400, "Required field 'path' is missing").dump();
+            }
+
+            const std::string path = request["path"].get<std::string>();
+            spdlog::info("Processing request for: {}", path);
+
+            // 提取请求数据
+            nlohmann::json data =
+                    request.value("data", nlohmann::json::object());
+            spdlog::debug("Request data: {}", data.dump());
+
+            // API频率限制
+            if (!CheckRateLimit(path)) {
+                spdlog::warn(
+                        "Rate limit exceeded for {} (429 Too Many Requests)",
+                        path);
+                return ErrResp(429, "Too many requests").dump();
+            }
+
+            // 路由分发
+            if (routes.find(path) != routes.end()) {
+                const auto response = routes[path](data);
+                spdlog::info("Successfully processed {}", path);
+                return response.dump(); // UTF-8确保
+            }
+
+            spdlog::warn("API endpoint not found: {}", path);
+            return ErrResp(404, "API endpoint not found").dump();
+
+        } catch (const std::exception &e) {
+            spdlog::error("Request processing error: {}", e.what());
+            return ErrResp(500, std::string("Internal error: ") + e.what())
+                    .dump();
+        } catch (...) {
+            spdlog::error("Unknown error during request processing");
+            return ErrResp(500, "Unknown internal error").dump();
+        }
     }
 
     nlohmann::json Route::ErrResp(int code, const std::string &message) {
@@ -84,55 +104,34 @@ namespace CryptoToysPP::Route {
 
     bool Route::CheckRateLimit(const std::string &path) {
         auto now = std::chrono::steady_clock::now();
-        auto &record = rateLimits[path];
+        auto &timePoints = rateLimits[path]; // 自动创建新队列
 
-        // 清除过期记录
-        while (!record.empty() &&
-               std::chrono::duration_cast<std::chrono::seconds>(now -
-                                                                record.front())
-                               .count() > TIME_WINDOW) {
-            record.pop();
+        // 清除过期记录 (修复类型问题)
+        while (!timePoints.empty()) {
+            auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+                    now - timePoints.front());
+            if (duration <= TIME_WINDOW)
+                break; // 检查是否在时间窗口内
+            timePoints.pop();
         }
 
-        // 检查次数限制
-        if (record.size() >= MAX_REQUESTS) {
+        // 检查请求次数限制
+        if (timePoints.size() >= MAX_REQUESTS) {
             return false;
         }
 
-        record.push(now);
+        timePoints.push(now);
         return true;
     }
 
     nlohmann::json Route::handleGetUser() {
-        // 关键修复：使用UTF-8编码的中文字符
         return {{"code", 200},
                 {"message", "Success"},
                 {"data",
                  {{"name", "张三"},
                   {"age", 30},
-                  {"email", "zhangsan@example.com"}}}};
-    }
-
-    nlohmann::json Route::handleGetTime() {
-        auto now = std::chrono::system_clock::now();
-        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-        char time_buf[64];
-        std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S",
-                      std::localtime(&now_time));
-
-        return {{"code", 200},
-                {"message", "Success"},
-                {"data",
-                 {{"timestamp", static_cast<long>(now_time)},
-                  {"iso_time", time_buf}}}};
-    }
-
-    nlohmann::json Route::handleCalculate(const nlohmann::json &data) {
-        int a = data.at("a").get<int>();
-        int b = data.at("b").get<int>();
-
-        return {{"code", 200},
-                {"message", "Success"},
-                {"data", {{"operation", "addition"}, {"result", a + b}}}};
+                  {"email", "zhangsan@example.com"},
+                  {"department", "Engineering"},
+                  {"employeeId", "EMP007"}}}};
     }
 } // namespace CryptoToysPP::Route

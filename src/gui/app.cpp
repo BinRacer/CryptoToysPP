@@ -34,41 +34,67 @@
 
 namespace CryptoToysPP::Gui {
     bool App::OnInit() {
+        // 创建日志目录
         const wxString logDir =
                 wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
-        if (!wxDirExists(logDir))
-            wxMkdir(logDir);
+        if (!wxDirExists(logDir)) {
+            if (!wxMkdir(logDir)) {
+                std::cerr << "Failed to create log directory: " << logDir
+                          << std::endl;
+                return false;
+            }
+        }
 
         const wxString logPath =
                 logDir + wxFileName::GetPathSeparator() + "app.log";
+
         try {
-            const auto file_sink =
+            // 初始化日志系统
+            std::shared_ptr<spdlog::sinks::sink> file_sink =
                     std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                            logPath.ToStdString(), 1024 * 1024 * 5, 3);
+                            logPath.ToStdString(), 1024 * 1024 * 100, 10);
+
             const auto console_sink =
                     std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
             std::vector<spdlog::sink_ptr> sinks{file_sink, console_sink};
-            const auto logger = std::make_shared<spdlog::logger>("main_logger",
-                                                                 sinks.begin(),
-                                                                 sinks.end());
+            auto logger = std::make_shared<spdlog::logger>("main_logger",
+                                                           sinks.begin(),
+                                                           sinks.end());
+
+            // 配置日志格式
             logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-            logger->set_level(spdlog::level::trace);
+            logger->set_level(spdlog::level::debug);
             spdlog::set_default_logger(logger);
-            spdlog::debug("日志系统初始化成功");
+
+            // 添加日志刷新配置
+            spdlog::flush_on(spdlog::level::info); // 重要级别日志立即刷新
+            spdlog::flush_every(std::chrono::seconds(5)); // 每5秒自动刷新
+
+            spdlog::info("Logging system initialized successfully");
+            spdlog::debug("Log file path: {}", logPath.ToStdString());
+            spdlog::debug("Log flush policy: immediate for INFO+ level, every "
+                          "5 seconds");
+
         } catch (const spdlog::spdlog_ex &ex) {
-            std::cerr << "日志初始化失败: " << ex.what() << std::endl;
+            std::cerr << "Log initialization failed: " << ex.what()
+                      << std::endl;
             return false;
         }
 
+// macOS 特定配置
 #ifdef __WXOSX__
         wxWebView::SetBackend(wxWebViewBackendWebKit);
+        spdlog::debug("macOS: Using WebKit backend");
 #endif
 
+        // 创建主框架
         return new MainFrame();
     }
 
     int App::OnExit() {
-        spdlog::shutdown();
+        spdlog::info("Application exiting...");
+        spdlog::shutdown(); // 这会自动刷新所有日志
         return wxApp::OnExit();
     }
 } // namespace CryptoToysPP::Gui

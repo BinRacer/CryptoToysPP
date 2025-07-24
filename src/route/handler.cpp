@@ -27,48 +27,59 @@
 /* clang-format on */
 #include "handler.h"
 #include "resources/resources.h"
+#include <map>
 #include <wx/filename.h>
 #include <wx/mstream.h>
 
 namespace CryptoToysPP::Route {
     SchemeHandler::SchemeHandler() : wxWebViewHandler("app") {
+        spdlog::debug("Custom scheme handler initialized for 'app' protocol");
     }
 
     wxFSFile *SchemeHandler::GetFile(const wxString &uri) {
+        const std::string uriStr = uri.ToStdString();
+        spdlog::info("Processing resource request: {}", uriStr);
+
         try {
-            // 解析请求路径并执行安全验证
+            // 安全验证资源路径
             ValidationResult pathResult = ValidateResourcePath(uri);
             if (!pathResult.valid) {
-                spdlog::error("路径验证失败: {} - {}", uri.ToStdString(),
+                spdlog::error("Path validation failed: {} - {}", uriStr,
                               pathResult.message);
                 return nullptr;
             }
 
-            const std::string key = pathResult.safePath;
-            spdlog::info("资源请求: {}", key);
+            const std::string &resourceKey = pathResult.safePath;
+            spdlog::debug("Validated resource key: {}", resourceKey);
 
-            // 安全获取资源描述符
-            ResourceDescriptor descriptor = GetResourceDescriptor(key);
+            // 获取资源描述符
+            ResourceDescriptor descriptor = GetResourceDescriptor(resourceKey);
             if (!descriptor.valid) {
-                spdlog::error("获取资源描述符失败: {}", descriptor.message);
+                spdlog::error("Resource descriptor error: {}",
+                              descriptor.message);
                 return nullptr;
             }
 
-            // 边界检查和零拷贝访问
+            // 边界检查
             if (!CheckResourceBounds(descriptor)) {
-                spdlog::error(
-                        "资源边界检查失败: {} [偏移={}, 长度={}, 总大小={}]",
-                        key, descriptor.offset, descriptor.length,
-                        Resources::RESOURCE_DATA.size);
+                spdlog::error("Resource bounds violation: {} [offset={}, "
+                              "length={}, totalSize={}]",
+                              resourceKey, descriptor.offset, descriptor.length,
+                              Resources::RESOURCE_DATA.size);
                 return nullptr;
             }
 
-            // 安全创建内存流
-            return CreateSecureMemoryStream(key, descriptor);
+            // 创建安全的内存流
+            return CreateSecureMemoryStream(resourceKey, descriptor);
+
         } catch (const std::exception &e) {
-            spdlog::error("资源处理异常: {} - {}", uri.ToStdString(), e.what());
-            return nullptr;
+            spdlog::error("Resource handling exception: {} - {}", uriStr,
+                          e.what());
+        } catch (...) {
+            spdlog::error("Unknown exception during resource handling: {}",
+                          uriStr);
         }
+        return nullptr;
     }
 
     SchemeHandler::ValidationResult
@@ -76,108 +87,143 @@ namespace CryptoToysPP::Route {
         ValidationResult result;
         wxString path = uri.AfterFirst(':');
 
-        // 移除多余斜杠
+        // 规范化路径
         path = path.Trim(false).Trim(true);
         while (path.StartsWith("/"))
             path = path.Mid(1);
+
         if (path.IsEmpty()) {
-            result.message = "请求路径为空";
+            result.message = "Empty resource path";
             return result;
         }
 
-        // 阻止目录遍历攻击
+        // 安全检测：防止路径遍历攻击
         if (path.Contains("..") || path.Contains("//")) {
-            result.message = "路径包含非法序列";
+            result.message = "Path contains illegal sequence";
             return result;
         }
 
-        // 检查扩展名白名单
-        wxString ext = wxFileName(path).GetExt().Lower();
-        static const std::vector<wxString> allowedExts = {"html", "js",
-                                                          "css",  "png",
-                                                          "jpg",  "jpeg",
-                                                          "gif",  "json",
-                                                          "ico"};
-        if (std::ranges::find(allowedExts, ext) == allowedExts.end()) {
-            result.message = "不支持的资源类型: " + ext.ToStdString();
+        // 检查文件扩展名
+        const wxString ext = wxFileName(path).GetExt().Lower();
+        static const std::vector<wxString> allowedExtensions = {"html", "js",
+                                                                "css",  "png",
+                                                                "jpg",  "jpeg",
+                                                                "gif",  "json",
+                                                                "ico",  "svg"};
+
+        if (std::ranges::find(allowedExtensions,
+                      ext) == allowedExtensions.end()) {
+            result.message = "Unsupported resource type: " + ext.ToStdString();
             return result;
         }
 
-        // 修正路径处理: 分开替换操作和字符串构建
-        path.Replace("\\", "/", true);              // 先执行替换操作
-        result.safePath = "/" + path.ToStdString(); // 然后转换为字符串
+        // 标准化路径格式
+        path.Replace("\\", "/", true);
+        result.safePath = "/" + path.ToStdString();
         result.valid = true;
+
+        spdlog::debug("Path validated: {}", result.safePath);
         return result;
     }
 
     SchemeHandler::ResourceDescriptor
     SchemeHandler::GetResourceDescriptor(const std::string &key) {
         ResourceDescriptor descriptor{};
-        auto lock = std::lock_guard<std::mutex>(resource_map_mutex);
+        std::lock_guard<std::mutex> lock(resource_map_mutex);
 
-        auto it = Resources::RESOURCE_MAP.find(key);
+        const auto it = Resources::RESOURCE_MAP.find(key);
         if (it == Resources::RESOURCE_MAP.end()) {
-            descriptor.message = "资源未找到: " + key;
+            descriptor.message = "Resource not found: " + key;
             return descriptor;
         }
 
         descriptor.offset = it->second.first;
         descriptor.length = it->second.second;
         descriptor.valid = true;
+
+        spdlog::debug("Resource descriptor: offset={}, length={}",
+                      descriptor.offset, descriptor.length);
         return descriptor;
     }
 
     bool
     SchemeHandler::CheckResourceBounds(const ResourceDescriptor &descriptor) {
+        // 检查偏移量是否有效
         if (descriptor.offset >= Resources::RESOURCE_DATA.size) {
+            spdlog::error("Offset exceeds resource size: {} >= {}",
+                          descriptor.offset, Resources::RESOURCE_DATA.size);
             return false;
         }
+
+        // 检查长度是否有效
         if (descriptor.length == 0) {
+            spdlog::error("Zero-length resource");
             return false;
         }
+
+        // 检查是否越界
         if (descriptor.offset + descriptor.length >
             Resources::RESOURCE_DATA.size) {
+            spdlog::error("Resource bounds exceeded: {}+{} > {}",
+                          descriptor.offset, descriptor.length,
+                          Resources::RESOURCE_DATA.size);
             return false;
         }
+
         return true;
     }
 
     wxFSFile *SchemeHandler::CreateSecureMemoryStream(
             const std::string &key,
             const ResourceDescriptor &descriptor) {
-        // 安全获取数据指针
-        const uint8_t *data_ptr =
+
+        // 获取资源数据指针
+        const uint8_t *dataPtr =
                 Resources::RESOURCE_DATA.data + descriptor.offset;
 
-        // 创建具有边界保护的输入流
+        // 创建内存输入流
         auto stream = std::make_unique<wxMemoryInputStream>(
-                reinterpret_cast<const char *>(data_ptr),
+                reinterpret_cast<const char *>(dataPtr),
                 static_cast<size_t>(descriptor.length));
 
         // 验证流完整性
-        if (!stream->IsOk() || stream->GetSize() != descriptor.length) {
-            throw std::runtime_error("资源流创建失败");
+        if (!stream->IsOk() ||
+            stream->GetSize() != static_cast<size_t>(descriptor.length)) {
+            spdlog::error("Stream creation failed for {}", key);
+            throw std::runtime_error("Resource stream creation failed");
         }
 
-        return new wxFSFile(stream.release(), "app:/" + key, GetMimeType(key),
+        // 获取MIME类型
+        wxString mimeType = GetMimeType(key);
+        spdlog::debug("MIME type for {}: {}", key, mimeType.ToStdString());
+
+        // 创建文件对象
+        return new wxFSFile(stream.release(), "app:/" + key, mimeType,
                             wxEmptyString, wxDateTime::Now());
     }
 
     wxString SchemeHandler::GetMimeType(const std::string &path) {
-        if (path.find(".html") != std::string::npos)
-            return "text/html";
-        if (path.find(".js") != std::string::npos)
-            return "application/javascript";
-        if (path.find(".css") != std::string::npos)
-            return "text/css";
-        if (path.find(".png") != std::string::npos)
-            return "image/png";
-        if (path.find(".jpg") != std::string::npos)
-            return "image/jpeg";
-        if (path.find(".json") != std::string::npos)
-            return "application/json";
-        if (path.find(".ico") != std::string::npos)
-            return "image/x-icon";
+        // 基于文件扩展名的MIME类型映射
+        static const std::map<std::string, wxString> mimeMap =
+                {{".html", "text/html"},
+                 {".htm", "text/html"},
+                 {".js", "application/javascript"},
+                 {".css", "text/css"},
+                 {".png", "image/png"},
+                 {".jpg", "image/jpeg"},
+                 {".jpeg", "image/jpeg"},
+                 {".gif", "image/gif"},
+                 {".json", "application/json"},
+                 {".ico", "image/x-icon"},
+                 {".svg", "image/svg+xml"}};
+
+        // 查找匹配的扩展名
+        for (const auto &[ext, mime] : mimeMap) {
+            if (path.find(ext) != std::string::npos) {
+                return mime;
+            }
+        }
+
         return "application/octet-stream";
     }
 } // namespace CryptoToysPP::Route

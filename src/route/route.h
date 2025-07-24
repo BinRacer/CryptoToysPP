@@ -37,11 +37,12 @@ namespace CryptoToysPP::Route {
     private:
         std::unordered_map<std::string, HandlerFunc> routes;
         // 限流设置
-        static constexpr int MAX_REQUESTS = 100; // 每API最大请求数
-        static constexpr int TIME_WINDOW = 60;   // 时间窗口(秒)
+        static constexpr int MAX_REQUESTS = 10;
+        static constexpr auto TIME_WINDOW = std::chrono::seconds(1);
         std::unordered_map<std::string,
                            std::queue<std::chrono::steady_clock::time_point>>
                 rateLimits;
+
     public:
         Route();
 
@@ -55,11 +56,7 @@ namespace CryptoToysPP::Route {
         bool CheckRateLimit(const std::string &path);
 
         nlohmann::json handleGetUser();
-
-        nlohmann::json handleGetTime();
-
-        nlohmann::json handleCalculate(const nlohmann::json &data);
     };
-} // namespace CryptoToysPP
+} // namespace CryptoToysPP::Route
 
 #endif // ROUTE_H
