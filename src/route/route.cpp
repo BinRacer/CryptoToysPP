@@ -26,7 +26,8 @@
  */
 /* clang-format on */
 #include "route.h"
-
+#include "base/base16.h"
+#include "base/base64.h"
 #include <spdlog/spdlog.h>
 
 namespace CryptoToysPP::Route {
@@ -34,13 +35,46 @@ namespace CryptoToysPP::Route {
         spdlog::debug("Initializing route handlers...");
 
         // 注册API端点
-        Add("POST", "/api/base/encode", [this](const nlohmann::json &) {
-            return handleGetUser();
+        Add("POST", "/api/base/encode", [this](const nlohmann::json &data) {
+            return BaseEncode(data);
+        });
+        Add("POST", "/api/base/decode", [this](const nlohmann::json &data) {
+            return BaseDecode(data);
         });
     }
 
-    nlohmann::json Route::handleGetUser() {
-        return {"张三"};
+    nlohmann::json Route::BaseEncode(const nlohmann::json &data) {
+        std::string encoded;
+        const int bits = data.value("bits", 64);
+        std::string inputText = data.value("inputText", std::string());
+        switch (bits) {
+            case 16:
+                encoded = Base::Base16::Encode(inputText);
+                break;
+            case 64:
+                encoded = Base::Base64::Encode(inputText);
+                break;
+            default:
+                encoded = Base::Base64::Encode(inputText);
+        }
+        return encoded;
+    }
+
+    nlohmann::json Route::BaseDecode(const nlohmann::json &data) {
+        std::string decoded;
+        const int bits = data.value("bits", 64);
+        std::string inputText = data.value("inputText", std::string());
+        switch (bits) {
+            case 16:
+                decoded = Base::Base16::Decode(inputText);
+                break;
+            case 64:
+                decoded = Base::Base64::Decode(inputText);
+                break;
+            default:
+                decoded = Base::Base64::Decode(inputText);
+        }
+        return decoded;
     }
 
     void Route::Add(const std::string &method,

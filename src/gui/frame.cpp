@@ -53,7 +53,7 @@ namespace CryptoToysPP::Gui {
 
         // 创建WebView组件
         webview = wxWebView::New(this, wxID_ANY, "", wxDefaultPosition,
-                                 wxSize(800, 600), backend, wxBORDER_NONE);
+                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), backend, wxBORDER_NONE);
 
         if (!webview) {
             spdlog::error("WebView creation failed");
@@ -89,7 +89,7 @@ namespace CryptoToysPP::Gui {
         webview->EnableAccessToDevTools(true);
         spdlog::debug("Developer tools enabled");
 
-        SetSize(800, 600);
+        SetSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         Center();
         Show();
         spdlog::info("Main window displayed");

@@ -29,6 +29,8 @@ add_executable(${PROJECT_NAME}
         src/gui/app.h
         src/base/base64.cpp
         src/base/base64.h
+        src/base/base16.cpp
+        src/base/base16.h
 )
 
 target_link_libraries(${PROJECT_NAME}

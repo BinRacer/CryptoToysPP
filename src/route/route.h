@@ -62,7 +62,9 @@ namespace CryptoToysPP::Route {
     public:
         Route();
 
-        nlohmann::json handleGetUser();
+        nlohmann::json BaseEncode(const nlohmann::json &data);
+
+        nlohmann::json BaseDecode(const nlohmann::json &data);
 
         void Add(const std::string &method,
                  const std::string &path,

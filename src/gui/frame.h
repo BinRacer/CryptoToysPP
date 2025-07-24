@@ -35,7 +35,8 @@ namespace CryptoToysPP::Gui {
     private:
         wxWebView *webview = nullptr;
         Route::Route route;
-
+        static constexpr int WINDOW_WIDTH = 1024;
+        static constexpr int WINDOW_HEIGHT = 768;
     public:
         MainFrame();
 
