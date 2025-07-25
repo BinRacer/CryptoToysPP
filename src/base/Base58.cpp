@@ -51,7 +51,7 @@ namespace CryptoToysPP::Base {
             }
         }
         std::vector<uint8_t> result(leading_zeros, '1');
-        for (const int & digit : std::ranges::reverse_view(digits)) {
+        for (const int &digit : std::ranges::reverse_view(digits)) {
             result.push_back(BASE58_CHARS[digit]);
         }
         return result;

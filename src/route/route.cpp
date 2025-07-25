@@ -35,6 +35,9 @@
 #include "base/base91.h"
 #include "base/base92.h"
 #include "base/base100.h"
+#include "simple/uucode.h"
+#include "simple/xxcode.h"
+#include "simple/vigenere.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Route {
     Route::Route() {
@@ -47,11 +50,17 @@ namespace CryptoToysPP::Route {
         Add("POST", "/api/base/decode", [this](const nlohmann::json &data) {
             return BaseDecode(data);
         });
+        Add("POST", "/api/simple/encode", [this](const nlohmann::json &data) {
+            return SimpleEncode(data);
+        });
+        Add("POST", "/api/simple/decode", [this](const nlohmann::json &data) {
+            return SimpleDecode(data);
+        });
     }
 
     nlohmann::json Route::BaseEncode(const nlohmann::json &data) {
         std::string encoded;
-        const int bits = data.value("bits", 64);
+        const int bits = data.value("bits", 0);
         const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
@@ -92,7 +101,7 @@ namespace CryptoToysPP::Route {
 
     nlohmann::json Route::BaseDecode(const nlohmann::json &data) {
         std::string decoded;
-        const int bits = data.value("bits", 64);
+        const int bits = data.value("bits", 0);
         const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
@@ -127,6 +136,36 @@ namespace CryptoToysPP::Route {
                 break;
             default:
                 break;
+        }
+        return decoded;
+    }
+
+    nlohmann::json Route::SimpleEncode(const nlohmann::json &data) {
+        std::string encoded;
+        const std::string whichCode = data.value("whichCode", "");
+        const std::string inputText = data.value("inputText", std::string());
+        if (whichCode == "uu") {
+            encoded = Simple::UUCode::Encode(inputText);
+        } else if (whichCode == "xx") {
+            encoded = Simple::XXCode::Encode(inputText);
+        } else if (whichCode == "vigenere") {
+            const std::string key = data.value("key", "");
+            encoded = Simple::Vigenere::Encode(inputText, key);
+        }
+        return encoded;
+    }
+
+    nlohmann::json Route::SimpleDecode(const nlohmann::json &data) {
+        std::string decoded;
+        const std::string whichCode = data.value("whichCode", "");
+        const std::string inputText = data.value("inputText", std::string());
+        if (whichCode == "uu") {
+            decoded = Simple::UUCode::Decode(inputText);
+        } else if (whichCode == "xx") {
+            decoded = Simple::XXCode::Decode(inputText);
+        } else if (whichCode == "vigenere") {
+            const std::string key = data.value("key", "");
+            decoded = Simple::Vigenere::Decode(inputText, key);
         }
         return decoded;
     }

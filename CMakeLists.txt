@@ -45,6 +45,12 @@ add_executable(${PROJECT_NAME}
         src/base/base92.h
         src/base/base100.cpp
         src/base/base100.h
+        src/simple/uucode.cpp
+        src/simple/uucode.h
+        src/simple/xxcode.cpp
+        src/simple/xxcode.h
+        src/simple/vigenere.cpp
+        src/simple/vigenere.h
 )
 
 target_link_libraries(${PROJECT_NAME}

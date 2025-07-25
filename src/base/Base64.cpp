@@ -183,14 +183,14 @@ namespace CryptoToysPP::Base {
             return {};
 
         std::vector modified_data(data, data + len);
-        std::ranges::transform(modified_data,
-                       modified_data.begin(), [](const uint8_t c) -> uint8_t {
-                           if (c == '-')
-                               return '+';
-                           if (c == '_')
-                               return '/';
-                           return c;
-                       });
+        std::ranges::transform(modified_data, modified_data.begin(),
+                               [](const uint8_t c) -> uint8_t {
+                                   if (c == '-')
+                                       return '+';
+                                   if (c == '_')
+                                       return '/';
+                                   return c;
+                               });
 
         const size_t padding = (4 - (modified_data.size() % 4)) % 4;
         modified_data.insert(modified_data.end(), padding, '=');
