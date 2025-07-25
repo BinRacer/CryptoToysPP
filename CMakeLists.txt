@@ -27,10 +27,24 @@ add_executable(${PROJECT_NAME}
         src/gui/frame.h
         src/gui/app.cpp
         src/gui/app.h
-        src/base/base64.cpp
-        src/base/base64.h
         src/base/base16.cpp
         src/base/base16.h
+        src/base/base32.cpp
+        src/base/base32.h
+        src/base/base58.cpp
+        src/base/base58.h
+        src/base/base62.cpp
+        src/base/base62.h
+        src/base/base64.cpp
+        src/base/base64.h
+        src/base/base85.cpp
+        src/base/base85.h
+        src/base/base91.cpp
+        src/base/base91.h
+        src/base/base92.cpp
+        src/base/base92.h
+        src/base/base100.cpp
+        src/base/base100.h
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -26,10 +26,16 @@
  */
 /* clang-format on */
 #include "route.h"
-#include "base/base16.h"
-#include "base/base64.h"
+#include "base/Base16.h"
+#include "base/Base32.h"
+#include "base/Base58.h"
+#include "base/Base62.h"
+#include "base/Base64.h"
+#include "base/base85.h"
+#include "base/base91.h"
+#include "base/base92.h"
+#include "base/base100.h"
 #include <spdlog/spdlog.h>
-
 namespace CryptoToysPP::Route {
     Route::Route() {
         spdlog::debug("Initializing route handlers...");
@@ -46,16 +52,40 @@ namespace CryptoToysPP::Route {
     nlohmann::json Route::BaseEncode(const nlohmann::json &data) {
         std::string encoded;
         const int bits = data.value("bits", 64);
-        std::string inputText = data.value("inputText", std::string());
+        const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
                 encoded = Base::Base16::Encode(inputText);
                 break;
+            case 32:
+                encoded = Base::Base32::Encode(inputText);
+                break;
+            case 58:
+                encoded = Base::Base58::Encode(inputText);
+                break;
+            case 62:
+                encoded = Base::Base62::Encode(inputText);
+                break;
             case 64:
                 encoded = Base::Base64::Encode(inputText);
                 break;
+            case 6464:
+                encoded = Base::Base64::EncodeURL(inputText);
+                break;
+            case 85:
+                encoded = Base::Base85::Encode(inputText);
+                break;
+            case 91:
+                encoded = Base::Base91::Encode(inputText);
+                break;
+            case 92:
+                encoded = Base::Base92::Encode(inputText);
+                break;
+            case 100:
+                encoded = Base::Base100::Encode(inputText);
+                break;
             default:
-                encoded = Base::Base64::Encode(inputText);
+                break;
         }
         return encoded;
     }
@@ -63,16 +93,40 @@ namespace CryptoToysPP::Route {
     nlohmann::json Route::BaseDecode(const nlohmann::json &data) {
         std::string decoded;
         const int bits = data.value("bits", 64);
-        std::string inputText = data.value("inputText", std::string());
+        const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
                 decoded = Base::Base16::Decode(inputText);
                 break;
+            case 32:
+                decoded = Base::Base32::Decode(inputText);
+                break;
+            case 58:
+                decoded = Base::Base58::Decode(inputText);
+                break;
+            case 62:
+                decoded = Base::Base62::Decode(inputText);
+                break;
             case 64:
                 decoded = Base::Base64::Decode(inputText);
                 break;
+            case 6464:
+                decoded = Base::Base64::DecodeURL(inputText);
+                break;
+            case 85:
+                decoded = Base::Base85::Decode(inputText);
+                break;
+            case 91:
+                decoded = Base::Base91::Decode(inputText);
+                break;
+            case 92:
+                decoded = Base::Base92::Decode(inputText);
+                break;
+            case 100:
+                decoded = Base::Base100::Decode(inputText);
+                break;
             default:
-                decoded = Base::Base64::Decode(inputText);
+                break;
         }
         return decoded;
     }
