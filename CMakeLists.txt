@@ -51,6 +51,8 @@ add_executable(${PROJECT_NAME}
         src/simple/xxcode.h
         src/simple/vigenere.cpp
         src/simple/vigenere.h
+        src/hash/hash.cpp
+        src/hash/hash.h
 )
 
 target_link_libraries(${PROJECT_NAME}

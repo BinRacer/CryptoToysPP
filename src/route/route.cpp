@@ -38,6 +38,7 @@
 #include "simple/uucode.h"
 #include "simple/xxcode.h"
 #include "simple/vigenere.h"
+#include "hash/hash.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Route {
     Route::Route() {
@@ -55,6 +56,9 @@ namespace CryptoToysPP::Route {
         });
         Add("POST", "/api/simple/decode", [this](const nlohmann::json &data) {
             return SimpleDecode(data);
+        });
+        Add("POST", "/api/hash/encode", [this](const nlohmann::json &data) {
+            return HashEncode(data);
         });
     }
 
@@ -168,6 +172,38 @@ namespace CryptoToysPP::Route {
             decoded = Simple::Vigenere::Decode(inputText, key);
         }
         return decoded;
+    }
+
+    nlohmann::json Route::HashEncode(const nlohmann::json &data) {
+        std::string encoded;
+        const std::string whichCode = data.value("whichCode", "");
+        const std::string inputText = data.value("inputText", std::string());
+        if (whichCode == "md2") {
+            encoded = Hash::MD2(inputText);
+        } else if (whichCode == "md4") {
+            encoded = Hash::MD4(inputText);
+        } else if (whichCode == "md5") {
+            encoded = Hash::MD5(inputText);
+        } else if (whichCode == "sha1") {
+            encoded = Hash::SHA1(inputText);
+        } else if (whichCode == "sha224") {
+            encoded = Hash::SHA224(inputText);
+        } else if (whichCode == "sha256") {
+            encoded = Hash::SHA256(inputText);
+        } else if (whichCode == "sha384") {
+            encoded = Hash::SHA384(inputText);
+        } else if (whichCode == "sha512") {
+            encoded = Hash::SHA512(inputText);
+        } else if (whichCode == "sha3-224") {
+            encoded = Hash::SHA3_224(inputText);
+        } else if (whichCode == "sha3-256") {
+            encoded = Hash::SHA3_256(inputText);
+        } else if (whichCode == "sha3-384") {
+            encoded = Hash::SHA3_384(inputText);
+        } else if (whichCode == "sha3-512") {
+            encoded = Hash::SHA3_512(inputText);
+        }
+        return encoded;
     }
 
     void Route::Add(const std::string &method,
