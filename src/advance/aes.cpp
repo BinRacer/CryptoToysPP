@@ -105,17 +105,17 @@ namespace CryptoToysPP::Advance {
     AES::PaddingScheme AES::StringToPaddingScheme(const std::string &padding) {
         auto PaddingScheme = PaddingScheme::UNKNOWN;
         if (padding == "NONE") {
-            PaddingScheme = AES::PaddingScheme::NONE;
+            PaddingScheme = PaddingScheme::NONE;
         } else if (padding == "ZEROS") {
-            PaddingScheme = AES::PaddingScheme::ZEROS;
+            PaddingScheme = PaddingScheme::ZEROS;
         } else if (padding == "PKCS7") {
-            PaddingScheme = AES::PaddingScheme::PKCS7;
+            PaddingScheme = PaddingScheme::PKCS7;
         } else if (padding == "ONE_AND_ZEROS") {
-            PaddingScheme = AES::PaddingScheme::ONE_AND_ZEROS;
+            PaddingScheme = PaddingScheme::ONE_AND_ZEROS;
         } else if (padding == "W3C") {
-            PaddingScheme = AES::PaddingScheme::W3C;
+            PaddingScheme = PaddingScheme::W3C;
         } else if (padding == "DEFAULT") {
-            PaddingScheme = AES::PaddingScheme::DEFAULT;
+            PaddingScheme = PaddingScheme::DEFAULT;
         }
         return PaddingScheme;
     }
@@ -214,7 +214,8 @@ namespace CryptoToysPP::Advance {
                                            PaddingScheme padding) {
         const bool isStreamingMode =
                 (mode == AESMode::OFB || mode == AESMode::CFB ||
-                 mode == AESMode::XTS);
+                 mode == AESMode::XTS || mode == AESMode::EAX ||
+                 mode == AESMode::GCM);
         return !(isStreamingMode && padding != PaddingScheme::NONE);
     }
 
@@ -251,8 +252,6 @@ namespace CryptoToysPP::Advance {
                      const std::string &ivStr,
                      AESMode mode,
                      bool isEncryption) {
-        constexpr size_t AES_BLOCK_SIZE = 16;
-
         // ECB模式不需要IV
         if (mode == AESMode::ECB) {
             return true;
@@ -264,19 +263,49 @@ namespace CryptoToysPP::Advance {
                               AESModeToString(mode));
                 return false;
             }
+
             // 加密时自动生成IV
             CryptoPP::AutoSeededRandomPool prng;
-            ivBlock = CryptoPP::SecByteBlock(AES_BLOCK_SIZE);
+
+            // CCM模式特殊处理
+            if (mode == AESMode::CCM) {
+                ivBlock = CryptoPP::SecByteBlock(RECOMMENDED_CCM_IV_SIZE);
+                spdlog::info("Generating recommended 12-byte IV for CCM mode");
+            } else {
+                ivBlock = CryptoPP::SecByteBlock(AES_BLOCK_SIZE);
+            }
+
             prng.GenerateBlock(ivBlock, ivBlock.size());
         } else {
-            if (ivStr.size() != AES_BLOCK_SIZE) {
-                spdlog::error("Invalid IV length: expected=16, actual={}",
-                              ivStr.size());
+            // CCM模式特殊处理
+            if (mode == AESMode::CCM) {
+                if (ivStr.size() < CCM_MIN_IV_SIZE ||
+                    ivStr.size() > CCM_MAX_IV_SIZE) {
+                    spdlog::error("Invalid IV length for CCM mode: "
+                                  "expected={}-{} bytes, actual={}",
+                                  CCM_MIN_IV_SIZE, CCM_MAX_IV_SIZE,
+                                  ivStr.size());
+                    return false;
+                }
+                // 即使长度有效也要警告非推荐值
+                if (ivStr.size() != RECOMMENDED_CCM_IV_SIZE) {
+                    spdlog::warn("Using non-recommended IV length {} for CCM "
+                                 "mode. Recommended is {} bytes.",
+                                 ivStr.size(), RECOMMENDED_CCM_IV_SIZE);
+                }
+            }
+            // 非CCM模式保持原要求
+            else if (ivStr.size() != AES_BLOCK_SIZE) {
+                spdlog::error(
+                        "Invalid IV length for {} mode: expected=16, actual={}",
+                        AESModeToString(mode), ivStr.size());
                 return false;
             }
+
+            // 将输入的IV字符串转为SecByteBlock
             ivBlock = CryptoPP::SecByteBlock(
                     reinterpret_cast<const CryptoPP::byte *>(ivStr.data()),
-                    AES_BLOCK_SIZE);
+                    ivStr.size());
         }
         return true;
     }
