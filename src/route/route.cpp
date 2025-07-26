@@ -39,6 +39,7 @@
 #include "simple/xxcode.h"
 #include "simple/vigenere.h"
 #include "hash/hash.h"
+#include "advance/aes.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Route {
     Route::Route() {
@@ -59,6 +60,12 @@ namespace CryptoToysPP::Route {
         });
         Add("POST", "/api/hash/encode", [this](const nlohmann::json &data) {
             return HashEncode(data);
+        });
+        Add("POST", "/api/aes/encode", [this](const nlohmann::json &data) {
+            return AesEncode(data);
+        });
+        Add("POST", "/api/aes/decode", [this](const nlohmann::json &data) {
+            return AesDecode(data);
         });
     }
 
@@ -146,14 +153,14 @@ namespace CryptoToysPP::Route {
 
     nlohmann::json Route::SimpleEncode(const nlohmann::json &data) {
         std::string encoded;
-        const std::string whichCode = data.value("whichCode", "");
+        const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "uu") {
             encoded = Simple::UUCode::Encode(inputText);
         } else if (whichCode == "xx") {
             encoded = Simple::XXCode::Encode(inputText);
         } else if (whichCode == "vigenere") {
-            const std::string key = data.value("key", "");
+            const std::string key = data.value("key", std::string());
             encoded = Simple::Vigenere::Encode(inputText, key);
         }
         return encoded;
@@ -161,14 +168,14 @@ namespace CryptoToysPP::Route {
 
     nlohmann::json Route::SimpleDecode(const nlohmann::json &data) {
         std::string decoded;
-        const std::string whichCode = data.value("whichCode", "");
+        const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "uu") {
             decoded = Simple::UUCode::Decode(inputText);
         } else if (whichCode == "xx") {
             decoded = Simple::XXCode::Decode(inputText);
         } else if (whichCode == "vigenere") {
-            const std::string key = data.value("key", "");
+            const std::string key = data.value("key", std::string());
             decoded = Simple::Vigenere::Decode(inputText, key);
         }
         return decoded;
@@ -176,7 +183,7 @@ namespace CryptoToysPP::Route {
 
     nlohmann::json Route::HashEncode(const nlohmann::json &data) {
         std::string encoded;
-        const std::string whichCode = data.value("whichCode", "");
+        const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "md2") {
             encoded = Hash::MD2(inputText);
@@ -204,6 +211,66 @@ namespace CryptoToysPP::Route {
             encoded = Hash::SHA3_512(inputText);
         }
         return encoded;
+    }
+
+    nlohmann::json Route::AesEncode(const nlohmann::json &data) {
+        const std::string plaintext = data.value("inputText", std::string());
+        const std::string keyFormat = data.value("keyFormat", std::string());
+        const std::string key = (keyFormat == "hex")
+                ? Advance::AES::HexToString(data.value("key", std::string()))
+                : data.value("key", std::string());
+        const std::string ivFormat = data.value("ivFormat", std::string());
+        const std::string iv = (ivFormat == "hex")
+                ? Advance::AES::HexToString(data.value("iv", std::string()))
+                : data.value("iv", std::string());
+        Advance::AES::AESMode mode = Advance::AES::StringToAESMode(
+                data.value("mode", std::string()));
+        Advance::AES::PaddingScheme padding =
+                Advance::AES::StringToPaddingScheme(
+                        data.value("padding", std::string()));
+        Advance::AES::KeyBits keyBits =
+                Advance::AES::IntToKeyBits(data.value("keyBits", 0));
+        Advance::AES::EncodingFormat outputEncoding =
+                Advance::AES::StringToEncodingFormat(
+                        data.value("encoding", std::string()));
+        auto result = Advance::AES::Encode(plaintext, mode, padding, keyBits,
+                                           key, iv, outputEncoding);
+        if (result.success) {
+            return result.data;
+        } else {
+            spdlog::error("AES Encode error: {}", result.error);
+            return result.error;
+        }
+    }
+
+    nlohmann::json Route::AesDecode(const nlohmann::json &data) {
+        const std::string ciphertext = data.value("inputText", std::string());
+        const std::string keyFormat = data.value("keyFormat", std::string());
+        const std::string key = (keyFormat == "hex")
+                ? Advance::AES::HexToString(data.value("key", std::string()))
+                : data.value("key", std::string());
+        const std::string ivFormat = data.value("ivFormat", std::string());
+        const std::string iv = (ivFormat == "hex")
+                ? Advance::AES::HexToString(data.value("iv", std::string()))
+                : data.value("iv", std::string());
+        Advance::AES::AESMode mode = Advance::AES::StringToAESMode(
+                data.value("mode", std::string()));
+        Advance::AES::PaddingScheme padding =
+                Advance::AES::StringToPaddingScheme(
+                        data.value("padding", std::string()));
+        Advance::AES::KeyBits keyBits =
+                Advance::AES::IntToKeyBits(data.value("keyBits", 0));
+        Advance::AES::EncodingFormat inputEncoding =
+                Advance::AES::StringToEncodingFormat(
+                        data.value("encoding", std::string()));
+        auto result = Advance::AES::Decode(ciphertext, mode, padding, keyBits,
+                                           key, iv, inputEncoding);
+        if (result.success) {
+            return result.data;
+        } else {
+            spdlog::error("AES Decode error: {}", result.error);
+            return result.error;
+        }
     }
 
     void Route::Add(const std::string &method,
@@ -238,10 +305,10 @@ namespace CryptoToysPP::Route {
             spdlog::error("Missing required field: 'path'");
             return MakeErrResp(400, "Required field 'path' is missing");
         }
-        const std::string requestId = request.value("__id", "");
+        const std::string requestId = request.value("__id", std::string());
         try {
-            const std::string method = request.value("method", "");
-            const std::string path = request.value("path", "");
+            const std::string method = request.value("method", std::string());
+            const std::string path = request.value("path", std::string());
             // 提取请求数据
             const nlohmann::json data =
                     request.value("data", nlohmann::json::object());
@@ -300,7 +367,7 @@ namespace CryptoToysPP::Route {
     }
 
     nlohmann::json Route::MakeOkResp(int code, const nlohmann::json &data) {
-        return {{"code", code}, {"message", ""}, {"data", data}};
+        return {{"code", code}, {"message", std::string()}, {"data", data}};
     }
 
     nlohmann::json Route::MakeErrResp(int code, const std::string &message) {

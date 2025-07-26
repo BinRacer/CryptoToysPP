@@ -53,6 +53,8 @@ add_executable(${PROJECT_NAME}
         src/simple/vigenere.h
         src/hash/hash.cpp
         src/hash/hash.h
+        src/advance/aes.cpp
+        src/advance/aes.h
 )
 
 target_link_libraries(${PROJECT_NAME}

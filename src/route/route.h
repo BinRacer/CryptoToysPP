@@ -72,6 +72,10 @@ namespace CryptoToysPP::Route {
 
         nlohmann::json HashEncode(const nlohmann::json &data);
 
+        nlohmann::json AesEncode(const nlohmann::json &data);
+
+        nlohmann::json AesDecode(const nlohmann::json &data);
+
         void Add(const std::string &method,
                  const std::string &path,
                  const HandlerFunc &handler);
