@@ -484,12 +484,20 @@ namespace CryptoToysPP::Advance {
                     CryptoPP::CCM<CryptoPP::AES>::Encryption encryptor;
                     encryptor.SetKeyWithIV(keyBlock, keyBlock.size(), ivBlock,
                                            ivBlock.size());
+
+                    // 正确使用SpecifyDataLengths（3个参数）
                     encryptor.SpecifyDataLengths(0, plaintext.size(), 0);
+
+                    // 在AuthenticatedEncryptionFilter中设置标签长度
+                    size_t tagSize = 12; // 认证标签长度（可配置）
                     CryptoPP::StringSource
                             ss(plaintext, true,
                                new CryptoPP::AuthenticatedEncryptionFilter(
                                        encryptor,
-                                       new CryptoPP::StringSink(ciphertext)));
+                                       new CryptoPP::StringSink(ciphertext),
+                                       false, // 不附加认证标签（已包含在CCM中）
+                                       tagSize // 指定认证标签长度
+                                       ));
                     break;
                 }
                 case AESMode::EAX: {
@@ -647,11 +655,21 @@ namespace CryptoToysPP::Advance {
                     CryptoPP::CCM<CryptoPP::AES>::Decryption decryptor;
                     decryptor.SetKeyWithIV(keyBlock, keyBlock.size(), ivBlock,
                                            ivBlock.size());
+
+                    // 正确使用SpecifyDataLengths（3个参数）
+                    size_t tagSize = 12; // 必须与加密时一致
+                    size_t messageLength = processedCiphertext.size() - tagSize;
+                    decryptor.SpecifyDataLengths(0, messageLength, 0);
+
                     CryptoPP::StringSource
                             ss(processedCiphertext, true,
                                new CryptoPP::AuthenticatedDecryptionFilter(
                                        decryptor,
-                                       new CryptoPP::StringSink(plaintext)));
+                                       new CryptoPP::StringSink(plaintext),
+                                       CryptoPP::AuthenticatedDecryptionFilter::
+                                               DEFAULT_FLAGS,
+                                       tagSize // 指定认证标签长度
+                                       ));
                     break;
                 }
                 case AESMode::EAX: {
