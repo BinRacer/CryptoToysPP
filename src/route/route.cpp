@@ -40,6 +40,7 @@
 #include "simple/vigenere.h"
 #include "hash/hash.h"
 #include "advance/aes.h"
+#include "advance/rsa.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Route {
     Route::Route() {
@@ -61,11 +62,20 @@ namespace CryptoToysPP::Route {
         Add("POST", "/api/hash/encode", [this](const nlohmann::json &data) {
             return HashEncode(data);
         });
-        Add("POST", "/api/aes/encode", [this](const nlohmann::json &data) {
-            return AesEncode(data);
+        Add("POST", "/api/aes/encrypt", [this](const nlohmann::json &data) {
+            return AesEncrypt(data);
         });
-        Add("POST", "/api/aes/decode", [this](const nlohmann::json &data) {
-            return AesDecode(data);
+        Add("POST", "/api/aes/decrypt", [this](const nlohmann::json &data) {
+            return AesDecrypt(data);
+        });
+        Add("POST", "/api/rsa/generate", [this](const nlohmann::json &data) {
+            return RsaGenerate(data);
+        });
+        Add("POST", "/api/rsa/encrypt", [this](const nlohmann::json &data) {
+            return RsaEncrypt(data);
+        });
+        Add("POST", "/api/rsa/decrypt", [this](const nlohmann::json &data) {
+            return RsaDecrypt(data);
         });
     }
 
@@ -213,7 +223,7 @@ namespace CryptoToysPP::Route {
         return encoded;
     }
 
-    nlohmann::json Route::AesEncode(const nlohmann::json &data) {
+    nlohmann::json Route::AesEncrypt(const nlohmann::json &data) {
         const std::string plaintext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
@@ -233,17 +243,17 @@ namespace CryptoToysPP::Route {
         Advance::AES::EncodingFormat outputEncoding =
                 Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Advance::AES::Encode(plaintext, mode, padding, keyBits,
-                                           key, iv, outputEncoding);
+        auto result = Advance::AES::Encrypt(plaintext, mode, padding, keyBits,
+                                            key, iv, outputEncoding);
         if (result.success) {
             return result.data;
         } else {
-            spdlog::error("AES Encode error: {}", result.error);
+            spdlog::error("AES Encrypt error: {}", result.error);
             return result.error;
         }
     }
 
-    nlohmann::json Route::AesDecode(const nlohmann::json &data) {
+    nlohmann::json Route::AesDecrypt(const nlohmann::json &data) {
         const std::string ciphertext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
@@ -263,12 +273,67 @@ namespace CryptoToysPP::Route {
         Advance::AES::EncodingFormat inputEncoding =
                 Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Advance::AES::Decode(ciphertext, mode, padding, keyBits,
-                                           key, iv, inputEncoding);
+        auto result = Advance::AES::Decrypt(ciphertext, mode, padding, keyBits,
+                                            key, iv, inputEncoding);
         if (result.success) {
             return result.data;
         } else {
-            spdlog::error("AES Decode error: {}", result.error);
+            spdlog::error("AES Decrypt error: {}", result.error);
+            return result.error;
+        }
+    }
+
+    nlohmann::json Route::RsaGenerate(const nlohmann::json &data) {
+        Advance::RSA::KeySize keySize =
+                Advance::RSA::IntToKeySize(data.value("keySize", 0));
+        Advance::RSA::PEMFormatType pemFormat =
+                Advance::RSA::StringToPEMFormatType(
+                        data.value("pemType", std::string()));
+
+        const auto [publicKey, privateKey] =
+                Advance::RSA::GenerateKeyPair(keySize, pemFormat);
+        if (publicKey.success && privateKey.success) {
+            return {{"publicKey", publicKey.data},
+                    {"privateKey", privateKey.data}};
+        }
+        return {{"publicKey", publicKey.error},
+                {"privateKey", privateKey.error}};
+    }
+
+    nlohmann::json Route::RsaEncrypt(const nlohmann::json &data) {
+        std::string plaintext = data.value("inputText", std::string());
+        std::string pubKeyStr = data.value("publicKey", std::string());
+        Advance::RSA::PEMFormatType pemFormat =
+                Advance::RSA::StringToPEMFormatType(
+                        data.value("pemType", std::string()));
+        Advance::RSA::PaddingScheme paddingScheme =
+                Advance::RSA::StringToPaddingScheme(
+                        data.value("paddingScheme", std::string()));
+        auto result = Advance::RSA::Encrypt(plaintext, pubKeyStr, pemFormat,
+                                            paddingScheme);
+        if (result.success) {
+            return result.data;
+        } else {
+            spdlog::error("RSA Encrypt error: {}", result.error);
+            return result.error;
+        }
+    }
+
+    nlohmann::json Route::RsaDecrypt(const nlohmann::json &data) {
+        std::string cipherText = data.value("inputText", std::string());
+        std::string privKeyStr = data.value("privateKey", std::string());
+        Advance::RSA::PEMFormatType pemFormat =
+                Advance::RSA::StringToPEMFormatType(
+                        data.value("pemType", std::string()));
+        Advance::RSA::PaddingScheme paddingScheme =
+                Advance::RSA::StringToPaddingScheme(
+                        data.value("paddingScheme", std::string()));
+        auto result = Advance::RSA::Decrypt(cipherText, privKeyStr, pemFormat,
+                                            paddingScheme);
+        if (result.success) {
+            return result.data;
+        } else {
+            spdlog::error("RSA Decrypt error: {}", result.error);
             return result.error;
         }
     }

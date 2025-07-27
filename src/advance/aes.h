@@ -70,21 +70,21 @@ namespace CryptoToysPP::Advance {
 
         static std::string HexToString(const std::string &hex);
 
-        static Result Encode(const std::string &plaintext,
-                             AESMode mode,
-                             PaddingScheme padding,
-                             KeyBits keyBits,
-                             const std::string &key,
-                             const std::string &iv,
-                             EncodingFormat outputEncoding);
+        static Result Encrypt(const std::string &plaintext,
+                              AESMode mode,
+                              PaddingScheme padding,
+                              KeyBits keyBits,
+                              const std::string &key,
+                              const std::string &iv,
+                              EncodingFormat outputEncoding);
 
-        static Result Decode(const std::string &ciphertext,
-                             AESMode mode,
-                             PaddingScheme padding,
-                             KeyBits keyBits,
-                             const std::string &key,
-                             const std::string &iv,
-                             EncodingFormat inputEncoding);
+        static Result Decrypt(const std::string &ciphertext,
+                              AESMode mode,
+                              PaddingScheme padding,
+                              KeyBits keyBits,
+                              const std::string &key,
+                              const std::string &iv,
+                              EncodingFormat inputEncoding);
 
     private:
         static constexpr size_t AES_BLOCK_SIZE = 16;

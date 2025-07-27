@@ -55,6 +55,8 @@ add_executable(${PROJECT_NAME}
         src/hash/hash.h
         src/advance/aes.cpp
         src/advance/aes.h
+        src/advance/rsa.cpp
+        src/advance/rsa.h
 )
 
 target_link_libraries(${PROJECT_NAME}

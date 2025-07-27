@@ -385,7 +385,7 @@ namespace CryptoToysPP::Advance {
         return input;
     }
 
-    AES::Result AES::Encode(const std::string &plaintext,
+    AES::Result AES::Encrypt(const std::string &plaintext,
                             AESMode mode,
                             PaddingScheme padding,
                             KeyBits keyBits,
@@ -551,7 +551,7 @@ namespace CryptoToysPP::Advance {
         }
     }
 
-    AES::Result AES::Decode(const std::string &ciphertext,
+    AES::Result AES::Decrypt(const std::string &ciphertext,
                             AESMode mode,
                             PaddingScheme padding,
                             KeyBits keyBits,
