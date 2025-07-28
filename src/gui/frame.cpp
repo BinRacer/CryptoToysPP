@@ -31,7 +31,7 @@
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Gui {
     MainFrame::MainFrame() :
-        wxFrame(nullptr, wxID_ANY, "wxWebView + Optimized Resource Protocol") {
+        wxFrame(nullptr, wxID_ANY, "CryptoToysPP - Encoding, Encryption and Decryption Toolbox") {
         InitWebView();
         spdlog::debug("MainFrame initialized");
     }
