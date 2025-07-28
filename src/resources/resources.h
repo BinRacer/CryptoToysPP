@@ -15,17 +15,17 @@ namespace CryptoToysPP::Resources {
 
     // 资源路径到(偏移, 长度)的映射
     inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {
-        { "/assets/crypto-CGq4fC7_.js", { 0, 87553 } },
+        { "/assets/crypto-CZo2ejW6.js", { 0, 87553 } },
         { "/assets/crypto-DXlUDT98.css", { 87553, 59060 } },
         { "/assets/element-plus-BIHauc6T.css", { 146613, 338932 } },
-        { "/assets/element-plus-XIuufz55.js", { 485545, 719673 } },
-        { "/assets/element-plus-icons-BjQqgfdT.js", { 1205218, 27665 } },
-        { "/assets/index-5I4X7zwV.js", { 1232883, 19042 } },
-        { "/assets/index-BRBVknHj.css", { 1251925, 10130 } },
-        { "/assets/lodash-vendor-S0Y0Up6J.js", { 1262055, 26859 } },
-        { "/assets/vendor-wFbPd71c.js", { 1288914, 87707 } },
-        { "/assets/vue-C1fXg_7f.js", { 1376621, 83837 } },
-        { "/favicon.ico", { 1460458, 4286 } },
-        { "/index.html", { 1464744, 888 } },
+        { "/assets/element-plus-icons-CHcYaXag.js", { 485545, 27848 } },
+        { "/assets/element-plus-qJvjUKHo.js", { 513393, 719673 } },
+        { "/assets/index-BPCOBTTq.js", { 1233066, 21329 } },
+        { "/assets/index-BaoqhA7H.css", { 1254395, 11589 } },
+        { "/assets/lodash-vendor-S0Y0Up6J.js", { 1265984, 26859 } },
+        { "/assets/vendor-wFbPd71c.js", { 1292843, 87707 } },
+        { "/assets/vue-C1fXg_7f.js", { 1380550, 83837 } },
+        { "/favicon.ico", { 1464387, 4286 } },
+        { "/index.html", { 1468673, 888 } },
     };
 } // namespace CryptoToysPP::Resources
