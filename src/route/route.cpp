@@ -26,21 +26,21 @@
  */
 /* clang-format on */
 #include "route.h"
-#include "base/Base16.h"
-#include "base/Base32.h"
-#include "base/Base58.h"
-#include "base/Base62.h"
-#include "base/Base64.h"
-#include "base/base85.h"
-#include "base/base91.h"
-#include "base/base92.h"
-#include "base/base100.h"
-#include "simple/uucode.h"
-#include "simple/xxcode.h"
-#include "simple/vigenere.h"
-#include "hash/hash.h"
-#include "advance/aes.h"
-#include "advance/rsa.h"
+#include "algorithm/base/Base16.h"
+#include "algorithm/base/Base32.h"
+#include "algorithm/base/Base58.h"
+#include "algorithm/base/Base62.h"
+#include "algorithm/base/Base64.h"
+#include "algorithm/base/base85.h"
+#include "algorithm/base/base91.h"
+#include "algorithm/base/base92.h"
+#include "algorithm/base/base100.h"
+#include "algorithm/simple/uucode.h"
+#include "algorithm/simple/xxcode.h"
+#include "algorithm/simple/vigenere.h"
+#include "algorithm/hash/hash.h"
+#include "algorithm/advance/aes.h"
+#include "algorithm/advance/rsa.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Route {
     Route::Route() {
@@ -85,34 +85,34 @@ namespace CryptoToysPP::Route {
         const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
-                encoded = Base::Base16::Encode(inputText);
+                encoded = Algorithm::Base::Base16::Encode(inputText);
                 break;
             case 32:
-                encoded = Base::Base32::Encode(inputText);
+                encoded = Algorithm::Base::Base32::Encode(inputText);
                 break;
             case 58:
-                encoded = Base::Base58::Encode(inputText);
+                encoded = Algorithm::Base::Base58::Encode(inputText);
                 break;
             case 62:
-                encoded = Base::Base62::Encode(inputText);
+                encoded = Algorithm::Base::Base62::Encode(inputText);
                 break;
             case 64:
-                encoded = Base::Base64::Encode(inputText);
+                encoded = Algorithm::Base::Base64::Encode(inputText);
                 break;
             case 6464:
-                encoded = Base::Base64::EncodeURL(inputText);
+                encoded = Algorithm::Base::Base64::EncodeURL(inputText);
                 break;
             case 85:
-                encoded = Base::Base85::Encode(inputText);
+                encoded = Algorithm::Base::Base85::Encode(inputText);
                 break;
             case 91:
-                encoded = Base::Base91::Encode(inputText);
+                encoded = Algorithm::Base::Base91::Encode(inputText);
                 break;
             case 92:
-                encoded = Base::Base92::Encode(inputText);
+                encoded = Algorithm::Base::Base92::Encode(inputText);
                 break;
             case 100:
-                encoded = Base::Base100::Encode(inputText);
+                encoded = Algorithm::Base::Base100::Encode(inputText);
                 break;
             default:
                 break;
@@ -126,34 +126,34 @@ namespace CryptoToysPP::Route {
         const std::string inputText = data.value("inputText", std::string());
         switch (bits) {
             case 16:
-                decoded = Base::Base16::Decode(inputText);
+                decoded = Algorithm::Base::Base16::Decode(inputText);
                 break;
             case 32:
-                decoded = Base::Base32::Decode(inputText);
+                decoded = Algorithm::Base::Base32::Decode(inputText);
                 break;
             case 58:
-                decoded = Base::Base58::Decode(inputText);
+                decoded = Algorithm::Base::Base58::Decode(inputText);
                 break;
             case 62:
-                decoded = Base::Base62::Decode(inputText);
+                decoded = Algorithm::Base::Base62::Decode(inputText);
                 break;
             case 64:
-                decoded = Base::Base64::Decode(inputText);
+                decoded = Algorithm::Base::Base64::Decode(inputText);
                 break;
             case 6464:
-                decoded = Base::Base64::DecodeURL(inputText);
+                decoded = Algorithm::Base::Base64::DecodeURL(inputText);
                 break;
             case 85:
-                decoded = Base::Base85::Decode(inputText);
+                decoded = Algorithm::Base::Base85::Decode(inputText);
                 break;
             case 91:
-                decoded = Base::Base91::Decode(inputText);
+                decoded = Algorithm::Base::Base91::Decode(inputText);
                 break;
             case 92:
-                decoded = Base::Base92::Decode(inputText);
+                decoded = Algorithm::Base::Base92::Decode(inputText);
                 break;
             case 100:
-                decoded = Base::Base100::Decode(inputText);
+                decoded = Algorithm::Base::Base100::Decode(inputText);
                 break;
             default:
                 break;
@@ -166,12 +166,12 @@ namespace CryptoToysPP::Route {
         const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "uu") {
-            encoded = Simple::UUCode::Encode(inputText);
+            encoded = Algorithm::Simple::UUCode::Encode(inputText);
         } else if (whichCode == "xx") {
-            encoded = Simple::XXCode::Encode(inputText);
+            encoded = Algorithm::Simple::XXCode::Encode(inputText);
         } else if (whichCode == "vigenere") {
             const std::string key = data.value("key", std::string());
-            encoded = Simple::Vigenere::Encode(inputText, key);
+            encoded = Algorithm::Simple::Vigenere::Encode(inputText, key);
         }
         return encoded;
     }
@@ -181,12 +181,12 @@ namespace CryptoToysPP::Route {
         const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "uu") {
-            decoded = Simple::UUCode::Decode(inputText);
+            decoded = Algorithm::Simple::UUCode::Decode(inputText);
         } else if (whichCode == "xx") {
-            decoded = Simple::XXCode::Decode(inputText);
+            decoded = Algorithm::Simple::XXCode::Decode(inputText);
         } else if (whichCode == "vigenere") {
             const std::string key = data.value("key", std::string());
-            decoded = Simple::Vigenere::Decode(inputText, key);
+            decoded = Algorithm::Simple::Vigenere::Decode(inputText, key);
         }
         return decoded;
     }
@@ -196,29 +196,29 @@ namespace CryptoToysPP::Route {
         const std::string whichCode = data.value("whichCode", std::string());
         const std::string inputText = data.value("inputText", std::string());
         if (whichCode == "md2") {
-            encoded = Hash::MD2(inputText);
+            encoded = Algorithm::Hash::MD2(inputText);
         } else if (whichCode == "md4") {
-            encoded = Hash::MD4(inputText);
+            encoded = Algorithm::Hash::MD4(inputText);
         } else if (whichCode == "md5") {
-            encoded = Hash::MD5(inputText);
+            encoded = Algorithm::Hash::MD5(inputText);
         } else if (whichCode == "sha1") {
-            encoded = Hash::SHA1(inputText);
+            encoded = Algorithm::Hash::SHA1(inputText);
         } else if (whichCode == "sha224") {
-            encoded = Hash::SHA224(inputText);
+            encoded = Algorithm::Hash::SHA224(inputText);
         } else if (whichCode == "sha256") {
-            encoded = Hash::SHA256(inputText);
+            encoded = Algorithm::Hash::SHA256(inputText);
         } else if (whichCode == "sha384") {
-            encoded = Hash::SHA384(inputText);
+            encoded = Algorithm::Hash::SHA384(inputText);
         } else if (whichCode == "sha512") {
-            encoded = Hash::SHA512(inputText);
+            encoded = Algorithm::Hash::SHA512(inputText);
         } else if (whichCode == "sha3-224") {
-            encoded = Hash::SHA3_224(inputText);
+            encoded = Algorithm::Hash::SHA3_224(inputText);
         } else if (whichCode == "sha3-256") {
-            encoded = Hash::SHA3_256(inputText);
+            encoded = Algorithm::Hash::SHA3_256(inputText);
         } else if (whichCode == "sha3-384") {
-            encoded = Hash::SHA3_384(inputText);
+            encoded = Algorithm::Hash::SHA3_384(inputText);
         } else if (whichCode == "sha3-512") {
-            encoded = Hash::SHA3_512(inputText);
+            encoded = Algorithm::Hash::SHA3_512(inputText);
         }
         return encoded;
     }
@@ -227,23 +227,23 @@ namespace CryptoToysPP::Route {
         const std::string plaintext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
-                ? Advance::AES::HexToString(data.value("key", std::string()))
+                ?Algorithm::Advance::AES::HexToString(data.value("key", std::string()))
                 : data.value("key", std::string());
         const std::string ivFormat = data.value("ivFormat", std::string());
         const std::string iv = (ivFormat == "hex")
-                ? Advance::AES::HexToString(data.value("iv", std::string()))
+                ? Algorithm::Advance::AES::HexToString(data.value("iv", std::string()))
                 : data.value("iv", std::string());
-        Advance::AES::AESMode mode = Advance::AES::StringToAESMode(
+        Algorithm::Advance::AES::AESMode mode = Algorithm::Advance::AES::StringToAESMode(
                 data.value("mode", std::string()));
-        Advance::AES::PaddingScheme padding =
-                Advance::AES::StringToPaddingScheme(
+        Algorithm::Advance::AES::PaddingScheme padding =
+                Algorithm::Advance::AES::StringToPaddingScheme(
                         data.value("padding", std::string()));
-        Advance::AES::KeyBits keyBits =
-                Advance::AES::IntToKeyBits(data.value("keyBits", 0));
-        Advance::AES::EncodingFormat outputEncoding =
-                Advance::AES::StringToEncodingFormat(
+        Algorithm::Advance::AES::KeyBits keyBits =
+                Algorithm::Advance::AES::IntToKeyBits(data.value("keyBits", 0));
+        Algorithm::Advance::AES::EncodingFormat outputEncoding =
+                Algorithm::Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Advance::AES::Encrypt(plaintext, mode, padding, keyBits,
+        auto result = Algorithm::Advance::AES::Encrypt(plaintext, mode, padding, keyBits,
                                             key, iv, outputEncoding);
         if (result.success) {
             return result.data;
@@ -257,23 +257,23 @@ namespace CryptoToysPP::Route {
         const std::string ciphertext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
-                ? Advance::AES::HexToString(data.value("key", std::string()))
+                ? Algorithm::Advance::AES::HexToString(data.value("key", std::string()))
                 : data.value("key", std::string());
         const std::string ivFormat = data.value("ivFormat", std::string());
         const std::string iv = (ivFormat == "hex")
-                ? Advance::AES::HexToString(data.value("iv", std::string()))
+                ? Algorithm::Advance::AES::HexToString(data.value("iv", std::string()))
                 : data.value("iv", std::string());
-        Advance::AES::AESMode mode = Advance::AES::StringToAESMode(
+        Algorithm::Advance::AES::AESMode mode = Algorithm::Advance::AES::StringToAESMode(
                 data.value("mode", std::string()));
-        Advance::AES::PaddingScheme padding =
-                Advance::AES::StringToPaddingScheme(
+        Algorithm::Advance::AES::PaddingScheme padding =
+                Algorithm::Advance::AES::StringToPaddingScheme(
                         data.value("padding", std::string()));
-        Advance::AES::KeyBits keyBits =
-                Advance::AES::IntToKeyBits(data.value("keyBits", 0));
-        Advance::AES::EncodingFormat inputEncoding =
-                Advance::AES::StringToEncodingFormat(
+        Algorithm::Advance::AES::KeyBits keyBits =
+                Algorithm::Advance::AES::IntToKeyBits(data.value("keyBits", 0));
+        Algorithm::Advance::AES::EncodingFormat inputEncoding =
+                Algorithm::Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Advance::AES::Decrypt(ciphertext, mode, padding, keyBits,
+        auto result = Algorithm::Advance::AES::Decrypt(ciphertext, mode, padding, keyBits,
                                             key, iv, inputEncoding);
         if (result.success) {
             return result.data;
@@ -284,14 +284,14 @@ namespace CryptoToysPP::Route {
     }
 
     nlohmann::json Route::RsaGenerate(const nlohmann::json &data) {
-        Advance::RSA::KeySize keySize =
-                Advance::RSA::IntToKeySize(data.value("keySize", 0));
-        Advance::RSA::PEMFormatType pemFormat =
-                Advance::RSA::StringToPEMFormatType(
+        Algorithm::Advance::RSA::KeySize keySize =
+                Algorithm::Advance::RSA::IntToKeySize(data.value("keySize", 0));
+        Algorithm::Advance::RSA::PEMFormatType pemFormat =
+                Algorithm::Advance::RSA::StringToPEMFormatType(
                         data.value("pemType", std::string()));
 
         const auto [publicKey, privateKey] =
-                Advance::RSA::GenerateKeyPair(keySize, pemFormat);
+                Algorithm::Advance::RSA::GenerateKeyPair(keySize, pemFormat);
         if (publicKey.success && privateKey.success) {
             return {{"publicKey", publicKey.data},
                     {"privateKey", privateKey.data}};
@@ -303,13 +303,13 @@ namespace CryptoToysPP::Route {
     nlohmann::json Route::RsaEncrypt(const nlohmann::json &data) {
         std::string plaintext = data.value("inputText", std::string());
         std::string pubKeyStr = data.value("publicKey", std::string());
-        Advance::RSA::PEMFormatType pemFormat =
-                Advance::RSA::StringToPEMFormatType(
+        Algorithm::Advance::RSA::PEMFormatType pemFormat =
+                Algorithm::Advance::RSA::StringToPEMFormatType(
                         data.value("pemType", std::string()));
-        Advance::RSA::PaddingScheme paddingScheme =
-                Advance::RSA::StringToPaddingScheme(
+        Algorithm::Advance::RSA::PaddingScheme paddingScheme =
+                Algorithm::Advance::RSA::StringToPaddingScheme(
                         data.value("paddingScheme", std::string()));
-        auto result = Advance::RSA::Encrypt(plaintext, pubKeyStr, pemFormat,
+        auto result = Algorithm::Advance::RSA::Encrypt(plaintext, pubKeyStr, pemFormat,
                                             paddingScheme);
         if (result.success) {
             return result.data;
@@ -322,13 +322,13 @@ namespace CryptoToysPP::Route {
     nlohmann::json Route::RsaDecrypt(const nlohmann::json &data) {
         std::string cipherText = data.value("inputText", std::string());
         std::string privKeyStr = data.value("privateKey", std::string());
-        Advance::RSA::PEMFormatType pemFormat =
-                Advance::RSA::StringToPEMFormatType(
+        Algorithm::Advance::RSA::PEMFormatType pemFormat =
+                Algorithm::Advance::RSA::StringToPEMFormatType(
                         data.value("pemType", std::string()));
-        Advance::RSA::PaddingScheme paddingScheme =
-                Advance::RSA::StringToPaddingScheme(
+        Algorithm::Advance::RSA::PaddingScheme paddingScheme =
+                Algorithm::Advance::RSA::StringToPaddingScheme(
                         data.value("paddingScheme", std::string()));
-        auto result = Advance::RSA::Decrypt(cipherText, privKeyStr, pemFormat,
+        auto result = Algorithm::Advance::RSA::Decrypt(cipherText, privKeyStr, pemFormat,
                                             paddingScheme);
         if (result.success) {
             return result.data;

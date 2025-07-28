@@ -27,36 +27,36 @@ add_executable(${PROJECT_NAME}
         src/gui/frame.h
         src/gui/app.cpp
         src/gui/app.h
-        src/base/base16.cpp
-        src/base/base16.h
-        src/base/base32.cpp
-        src/base/base32.h
-        src/base/base58.cpp
-        src/base/base58.h
-        src/base/base62.cpp
-        src/base/base62.h
-        src/base/base64.cpp
-        src/base/base64.h
-        src/base/base85.cpp
-        src/base/base85.h
-        src/base/base91.cpp
-        src/base/base91.h
-        src/base/base92.cpp
-        src/base/base92.h
-        src/base/base100.cpp
-        src/base/base100.h
-        src/simple/uucode.cpp
-        src/simple/uucode.h
-        src/simple/xxcode.cpp
-        src/simple/xxcode.h
-        src/simple/vigenere.cpp
-        src/simple/vigenere.h
-        src/hash/hash.cpp
-        src/hash/hash.h
-        src/advance/aes.cpp
-        src/advance/aes.h
-        src/advance/rsa.cpp
-        src/advance/rsa.h
+        src/algorithm/base/base16.cpp
+        src/algorithm/base/base16.h
+        src/algorithm/base/base32.cpp
+        src/algorithm/base/base32.h
+        src/algorithm/base/base58.cpp
+        src/algorithm/base/base58.h
+        src/algorithm/base/base62.cpp
+        src/algorithm/base/base62.h
+        src/algorithm/base/base64.cpp
+        src/algorithm/base/base64.h
+        src/algorithm/base/base85.cpp
+        src/algorithm/base/base85.h
+        src/algorithm/base/base91.cpp
+        src/algorithm/base/base91.h
+        src/algorithm/base/base92.cpp
+        src/algorithm/base/base92.h
+        src/algorithm/base/base100.cpp
+        src/algorithm/base/base100.h
+        src/algorithm/simple/uucode.cpp
+        src/algorithm/simple/uucode.h
+        src/algorithm/simple/xxcode.cpp
+        src/algorithm/simple/xxcode.h
+        src/algorithm/simple/vigenere.cpp
+        src/algorithm/simple/vigenere.h
+        src/algorithm/hash/hash.cpp
+        src/algorithm/hash/hash.h
+        src/algorithm/advance/aes.cpp
+        src/algorithm/advance/aes.h
+        src/algorithm/advance/rsa.cpp
+        src/algorithm/advance/rsa.h
 )
 
 target_link_libraries(${PROJECT_NAME}

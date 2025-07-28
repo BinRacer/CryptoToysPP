@@ -27,7 +27,7 @@
 /* clang-format on */
 #include "frame.h"
 #include "route/handler.h"
-#include "base/Base64.h"
+#include "algorithm/base/Base64.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Gui {
     MainFrame::MainFrame() :
@@ -106,7 +106,7 @@ namespace CryptoToysPP::Gui {
             // 解码和解析请求
             std::string base64Payload = evt.GetString().ToStdString();
             spdlog::debug("Pre-Base64 request data: {}", base64Payload);
-            std::string requestJson = Base::Base64::Decode(base64Payload);
+            std::string requestJson = Algorithm::Base::Base64::Decode(base64Payload);
             spdlog::debug("Post-Base64 request data: {}", requestJson);
 
             const auto request = nlohmann::json::parse(requestJson);
@@ -139,7 +139,7 @@ namespace CryptoToysPP::Gui {
                       responseJson);
 
         // 进行Base64编码
-        std::string base64Response = Base::Base64::Encode(responseJson);
+        std::string base64Response = Algorithm::Base::Base64::Encode(responseJson);
         spdlog::debug("[{}] Post-Base64 response data: {}", requestId,
                       base64Response);
 
@@ -165,7 +165,7 @@ namespace CryptoToysPP::Gui {
                       responseJson);
 
         // 进行Base64编码
-        std::string base64Response = Base::Base64::Encode(responseJson);
+        std::string base64Response = Algorithm::Base::Base64::Encode(responseJson);
         spdlog::error("[{}] Post-Base64 error response: {}", requestId,
                       base64Response);
 
