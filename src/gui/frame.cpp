@@ -31,7 +31,9 @@
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Gui {
     MainFrame::MainFrame() :
-        wxFrame(nullptr, wxID_ANY, "CryptoToysPP - Encoding, Encryption and Decryption Toolbox") {
+        wxFrame(nullptr,
+                wxID_ANY,
+                "CryptoToysPP - Encoding, Encryption and Decryption Toolbox") {
         InitWebView();
         spdlog::debug("MainFrame initialized");
     }
@@ -39,7 +41,7 @@ namespace CryptoToysPP::Gui {
     void MainFrame::InitWebView() {
         spdlog::debug("Initializing WebView...");
 
-        // 选择WebView后端
+        // Selecting WebView backend
         wxString backend = wxWebViewBackendDefault;
         if (wxWebView::IsBackendAvailable(wxWebViewBackendEdge)) {
             backend = wxWebViewBackendEdge;
@@ -51,9 +53,10 @@ namespace CryptoToysPP::Gui {
             spdlog::debug("Using default backend");
         }
 
-        // 创建WebView组件
+        // Creating WebView component
         webview = wxWebView::New(this, wxID_ANY, "", wxDefaultPosition,
-                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), backend, wxBORDER_NONE);
+                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), backend,
+                                 wxBORDER_NONE);
 
         if (!webview) {
             spdlog::error("WebView creation failed");
@@ -62,7 +65,7 @@ namespace CryptoToysPP::Gui {
         }
         spdlog::info("WebView created successfully");
 
-        // 设置WebView功能
+        // Configuring WebView features
         webview->RegisterHandler(
                 wxSharedPtr<wxWebViewHandler>(new Route::SchemeHandler()));
         spdlog::debug("Registered custom scheme handler");
@@ -72,7 +75,7 @@ namespace CryptoToysPP::Gui {
                 "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
         spdlog::debug("User agent configured");
 
-        // 绑定事件处理
+        // Binding event handlers
         webview->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED,
                       &MainFrame::OnScriptMessage, this);
         webview->AddScriptMessageHandler("CryptoToysPP");
@@ -81,7 +84,7 @@ namespace CryptoToysPP::Gui {
         webview->Bind(wxEVT_WEBVIEW_ERROR, &MainFrame::OnWebViewError, this);
         webview->Bind(wxEVT_WEBVIEW_LOADED, &MainFrame::OnWebViewLoaded, this);
 
-        // 初始配置
+        // Initial configuration
         webview->LoadURL("app://index.html");
         spdlog::info("Loading initial page: app://index.html");
 
@@ -103,15 +106,16 @@ namespace CryptoToysPP::Gui {
         std::string requestId;
 
         try {
-            // 解码和解析请求
+            // Decoding and parsing the request
             std::string base64Payload = evt.GetString().ToStdString();
             spdlog::debug("Pre-Base64 request data: {}", base64Payload);
-            std::string requestJson = Algorithm::Base::Base64::Decode(base64Payload);
+            std::string requestJson =
+                    Algorithm::Base::Base64::Decode(base64Payload);
             spdlog::debug("Post-Base64 request data: {}", requestJson);
 
             const auto request = nlohmann::json::parse(requestJson);
             requestId = request.value("__id", "");
-            // 路由处理
+            // Routing the request
             const nlohmann::json response = route.ProcessRequest(request);
             SendOkResp(requestId, response);
         } catch (const nlohmann::json::parse_error &e) {
@@ -133,17 +137,18 @@ namespace CryptoToysPP::Gui {
 
     void MainFrame::SendOkResp(const std::string &requestId,
                                const nlohmann::json &response) {
-        // 提取原始响应内容
+        // Extracting raw response content
         std::string responseJson = response.dump();
         spdlog::debug("[{}] Pre-Base64 response data: {}", requestId,
                       responseJson);
 
-        // 进行Base64编码
-        std::string base64Response = Algorithm::Base::Base64::Encode(responseJson);
+        // Performing Base64 encoding
+        std::string base64Response =
+                Algorithm::Base::Base64::Encode(responseJson);
         spdlog::debug("[{}] Post-Base64 response data: {}", requestId,
                       base64Response);
 
-        // 发送响应
+        // Sending response
         const wxString script =
                 wxString::Format("window.rest.resolveInvoke('%s', '%s');",
                                  base64Response, requestId);
@@ -154,22 +159,23 @@ namespace CryptoToysPP::Gui {
 
     void MainFrame::SendErrResp(const std::string &requestId,
                                 const std::string &message) {
-        // 构建错误响应
+        // Constructing error response
         const nlohmann::json response = {{"code", 500},
                                          {"message", message},
                                          {"data", nlohmann::json::object()}};
 
-        // 提取原始响应内容
+        // Extracting raw response content
         std::string responseJson = response.dump();
         spdlog::error("[{}] Pre-Base64 error response: {}", requestId,
                       responseJson);
 
-        // 进行Base64编码
-        std::string base64Response = Algorithm::Base::Base64::Encode(responseJson);
+        // Performing Base64 encoding
+        std::string base64Response =
+                Algorithm::Base::Base64::Encode(responseJson);
         spdlog::error("[{}] Post-Base64 error response: {}", requestId,
                       base64Response);
 
-        // 发送错误响应
+        // Sending error response
         const wxString script =
                 wxString::Format("window.rest.rejectInvoke('%s', '%s');",
                                  base64Response, requestId);

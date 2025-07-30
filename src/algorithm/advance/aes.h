@@ -90,7 +90,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         static constexpr size_t AES_BLOCK_SIZE = 16;
         static constexpr size_t CCM_MIN_IV_SIZE = 7;
         static constexpr size_t CCM_MAX_IV_SIZE = 13;
-        static constexpr size_t RECOMMENDED_CCM_IV_SIZE = 12; // NIST推荐值
+        static constexpr size_t RECOMMENDED_CCM_IV_SIZE = 12; // NIST recommend
 
         static bool initKey(CryptoPP::SecByteBlock &keyBlock,
                             const std::string &keyStr,

@@ -151,17 +151,17 @@ namespace CryptoToysPP::Algorithm::Advance {
     }
 
     std::string AES::HexToString(const std::string &hex) {
-        // 校验输入长度
+        // Validate input length
         if (hex.empty() || hex.size() % 2 != 0)
             return "";
 
-        // 预分配结果内存（避免动态扩容）
+        // Pre-allocate result memory (avoid dynamic expansion)
         std::string result;
         result.resize(hex.size() / 2);
 
-        // 256字节静态查表（O(1)时间复杂度）
+        // 256-byte static lookup table (O(1) time complexity)
         static constexpr uint8_t lookup[256] =
-                {// 0-47: 非法字符默认0xFF
+                {// 0-47: Invalid characters (default 0xFF)
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -169,17 +169,17 @@ namespace CryptoToysPP::Algorithm::Advance {
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  // 48-57: '0'-'9' → 0-9
                  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-                 // 58-64: 非法字符
+                 // 58-64: Invalid characters
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  // 65-70: 'A'-'F' → 10-15
                  0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                 // 71-96: 非法字符
+                 // 71-96: Invalid characters
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  // 97-102: 'a'-'f' → 10-15
                  0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                 // 剩余全部为非法
+                 // Remainder are invalid
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -194,16 +194,16 @@ namespace CryptoToysPP::Algorithm::Advance {
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-        // 核心转换逻辑
+        // Core conversion logic
         for (size_t i = 0; i < hex.size(); i += 2) {
             const uint8_t hi_val = lookup[static_cast<uint8_t>(hex[i])];
             const uint8_t lo_val = lookup[static_cast<uint8_t>(hex[i + 1])];
 
-            // 非法字符检测（0xFF表示非法）
+            // Invalid character detection (0xFF indicates invalid)
             if (hi_val == 0xFF || lo_val == 0xFF)
                 return "";
 
-            // 位运算合并高低位
+            // Bitwise combination of high and low bits
             result[i / 2] = static_cast<char>((hi_val << 4) | lo_val);
         }
         return result;
@@ -225,7 +225,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                       AESMode mode) {
         int requiredLength = static_cast<int>(keyBits) / 8;
 
-        // 特殊处理XTS模式需要双倍密钥
+        // Special handling for XTS mode requiring double key length
         if (mode == AESMode::XTS) {
             requiredLength *= 2;
         }
@@ -252,7 +252,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                      const std::string &ivStr,
                      AESMode mode,
                      bool isEncryption) {
-        // ECB模式不需要IV
+        // ECB mode does not require IV
         if (mode == AESMode::ECB) {
             return true;
         }
@@ -264,10 +264,10 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return false;
             }
 
-            // 加密时自动生成IV
+            // Automatically generate IV during encryption
             CryptoPP::AutoSeededRandomPool prng;
 
-            // CCM模式特殊处理
+            // Special handling for CCM mode
             if (mode == AESMode::CCM) {
                 ivBlock = CryptoPP::SecByteBlock(RECOMMENDED_CCM_IV_SIZE);
                 spdlog::info("Generating recommended 12-byte IV for CCM mode");
@@ -277,7 +277,7 @@ namespace CryptoToysPP::Algorithm::Advance {
 
             prng.GenerateBlock(ivBlock, ivBlock.size());
         } else {
-            // CCM模式特殊处理
+            // Special handling for CCM mode
             if (mode == AESMode::CCM) {
                 if (ivStr.size() < CCM_MIN_IV_SIZE ||
                     ivStr.size() > CCM_MAX_IV_SIZE) {
@@ -287,14 +287,14 @@ namespace CryptoToysPP::Algorithm::Advance {
                                   ivStr.size());
                     return false;
                 }
-                // 即使长度有效也要警告非推荐值
+                // Warn about non-recommended values even if valid
                 if (ivStr.size() != RECOMMENDED_CCM_IV_SIZE) {
                     spdlog::warn("Using non-recommended IV length {} for CCM "
                                  "mode. Recommended is {} bytes.",
                                  ivStr.size(), RECOMMENDED_CCM_IV_SIZE);
                 }
             }
-            // 非CCM模式保持原要求
+            // Non-CCM modes maintain the original requirement
             else if (ivStr.size() != AES_BLOCK_SIZE) {
                 spdlog::error(
                         "Invalid IV length for {} mode: expected=16, actual={}",
@@ -302,7 +302,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return false;
             }
 
-            // 将输入的IV字符串转为SecByteBlock
+            // Convert input IV string to SecByteBlock
             ivBlock = CryptoPP::SecByteBlock(
                     reinterpret_cast<const CryptoPP::byte *>(ivStr.data()),
                     ivStr.size());
@@ -386,15 +386,15 @@ namespace CryptoToysPP::Algorithm::Advance {
     }
 
     AES::Result AES::Encrypt(const std::string &plaintext,
-                            AESMode mode,
-                            PaddingScheme padding,
-                            KeyBits keyBits,
-                            const std::string &key,
-                            const std::string &iv,
-                            EncodingFormat outputEncoding) {
+                             AESMode mode,
+                             PaddingScheme padding,
+                             KeyBits keyBits,
+                             const std::string &key,
+                             const std::string &iv,
+                             EncodingFormat outputEncoding) {
         Result result;
 
-        // 验证流密码模式填充
+        // Validate streaming mode padding requirements
         if (!validateStreamingModePadding(mode, padding)) {
             result.error = "Streaming modes require NO_PADDING";
             result.success = false;
@@ -485,19 +485,21 @@ namespace CryptoToysPP::Algorithm::Advance {
                     encryptor.SetKeyWithIV(keyBlock, keyBlock.size(), ivBlock,
                                            ivBlock.size());
 
-                    // 正确使用SpecifyDataLengths（3个参数）
+                    // Correct usage of SpecifyDataLengths (3 parameters)
                     encryptor.SpecifyDataLengths(0, plaintext.size(), 0);
 
-                    // 在AuthenticatedEncryptionFilter中设置标签长度
-                    size_t tagSize = 12; // 认证标签长度（可配置）
-                    CryptoPP::StringSource
-                            ss(plaintext, true,
-                               new CryptoPP::AuthenticatedEncryptionFilter(
-                                       encryptor,
-                                       new CryptoPP::StringSink(ciphertext),
-                                       false, // 不附加认证标签（已包含在CCM中）
-                                       tagSize // 指定认证标签长度
-                                       ));
+                    // Set tag length in AuthenticatedEncryptionFilter
+                    size_t tagSize =
+                            12; // Authentication tag length (configurable)
+                    CryptoPP::StringSource ss(
+                            plaintext, true,
+                            new CryptoPP::AuthenticatedEncryptionFilter(
+                                    encryptor,
+                                    new CryptoPP::StringSink(ciphertext),
+                                    false,  // Do not append authentication tag,
+                                            // (already included in CCM)
+                                    tagSize // Specify authentication tag length
+                                    ));
                     break;
                 }
                 case AESMode::EAX: {
@@ -552,15 +554,15 @@ namespace CryptoToysPP::Algorithm::Advance {
     }
 
     AES::Result AES::Decrypt(const std::string &ciphertext,
-                            AESMode mode,
-                            PaddingScheme padding,
-                            KeyBits keyBits,
-                            const std::string &key,
-                            const std::string &iv,
-                            EncodingFormat inputEncoding) {
+                             AESMode mode,
+                             PaddingScheme padding,
+                             KeyBits keyBits,
+                             const std::string &key,
+                             const std::string &iv,
+                             EncodingFormat inputEncoding) {
         Result result;
 
-        // 验证流密码模式填充
+        // Validate streaming mode padding requirements
         if (!validateStreamingModePadding(mode, padding)) {
             result.error = "Streaming modes require NO_PADDING";
             result.success = false;
@@ -656,20 +658,20 @@ namespace CryptoToysPP::Algorithm::Advance {
                     decryptor.SetKeyWithIV(keyBlock, keyBlock.size(), ivBlock,
                                            ivBlock.size());
 
-                    // 正确使用SpecifyDataLengths（3个参数）
-                    size_t tagSize = 12; // 必须与加密时一致
+                    // Correct usage of SpecifyDataLengths (3 parameters)
+                    size_t tagSize = 12; // Must match encryption value
                     size_t messageLength = processedCiphertext.size() - tagSize;
                     decryptor.SpecifyDataLengths(0, messageLength, 0);
 
-                    CryptoPP::StringSource
-                            ss(processedCiphertext, true,
-                               new CryptoPP::AuthenticatedDecryptionFilter(
-                                       decryptor,
-                                       new CryptoPP::StringSink(plaintext),
-                                       CryptoPP::AuthenticatedDecryptionFilter::
-                                               DEFAULT_FLAGS,
-                                       tagSize // 指定认证标签长度
-                                       ));
+                    CryptoPP::StringSource ss(
+                            processedCiphertext, true,
+                            new CryptoPP::AuthenticatedDecryptionFilter(
+                                    decryptor,
+                                    new CryptoPP::StringSink(plaintext),
+                                    CryptoPP::AuthenticatedDecryptionFilter::
+                                            DEFAULT_FLAGS,
+                                    tagSize // Specify authentication tag length
+                                    ));
                     break;
                 }
                 case AESMode::EAX: {

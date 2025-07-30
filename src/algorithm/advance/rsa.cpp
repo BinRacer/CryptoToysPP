@@ -35,7 +35,7 @@
 #include <algorithm>
 #include <ranges>
 namespace CryptoToysPP::Algorithm::Advance {
-    // 辅助函数：将CryptoPP::Integer转换为十六进制字符串
+    // Helper function: Convert CryptoPP::Integer to hexadecimal string
     std::string integer_to_hex(const CryptoPP::Integer &num,
                                size_t max_bytes = 16) {
         std::ostringstream oss;
@@ -57,7 +57,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         return oss.str();
     }
 
-    // 辅助函数：将二进制数据转换为十六进制字符串
+    // Helper function: Convert binary data to hexadecimal string
     std::string to_hex_string(const std::string &data, size_t max_len = 32) {
         std::ostringstream oss;
         oss << std::hex << std::setfill('0');
@@ -158,12 +158,12 @@ namespace CryptoToysPP::Algorithm::Advance {
                      static_cast<unsigned>(keySize));
 
         try {
-            CryptoPP::AutoSeededRandomPool rng;
-            CryptoPP::InvertibleRSAFunction params;
-            params.GenerateRandomWithKeySize(rng, static_cast<unsigned>(keySize));
-
-            CryptoPP::RSA::PrivateKey privKey(params);
-            CryptoPP::RSA::PublicKey pubKey(params);
+            CryptoPP::AutoSeededRandomPool rng{};
+            CryptoPP::RSA::PrivateKey privKey;
+            privKey.GenerateRandomWithKeySize(rng,
+                                              static_cast<unsigned>(keySize));
+            CryptoPP::RSA::PublicKey pubKey;
+            pubKey.Initialize(privKey.GetModulus(), privKey.GetPublicExponent());
 
             publicKeyResult = EncodePEM(pubKey, format);
             privateKeyResult = EncodePEM(privKey, format);
@@ -200,7 +200,7 @@ namespace CryptoToysPP::Algorithm::Advance {
 
         try {
             CryptoPP::ByteQueue queue;
-            key.Save(queue); // 使用Save而不是DEREncodePublicKey
+            key.Save(queue); // Using Save instead of DEREncodePublicKey
 
             std::string base64;
             CryptoPP::Base64Encoder encoder(new CryptoPP::StringSink(base64),
@@ -209,7 +209,7 @@ namespace CryptoToysPP::Algorithm::Advance {
             queue.CopyTo(encoder);
             encoder.MessageEnd();
 
-            // 移除所有换行符
+            // Remove all newline characters
             base64.erase(std::ranges::remove(base64, '\n').begin(),
                          base64.end());
             base64.erase(std::ranges::remove(base64, '\r').begin(),
@@ -244,7 +244,7 @@ namespace CryptoToysPP::Algorithm::Advance {
 
         try {
             CryptoPP::ByteQueue queue;
-            key.Save(queue); // 使用Save而不是DEREncodePrivateKey
+            key.Save(queue); // Using Save instead of DEREncodePrivateKey
 
             std::string base64;
             CryptoPP::Base64Encoder encoder(new CryptoPP::StringSink(base64),
@@ -253,7 +253,7 @@ namespace CryptoToysPP::Algorithm::Advance {
             queue.CopyTo(encoder);
             encoder.MessageEnd();
 
-            // 移除所有换行符
+            // Remove all newline characters
             base64.erase(std::ranges::remove(base64, '\n').begin(),
                          base64.end());
             base64.erase(std::ranges::remove(base64, '\r').begin(),
@@ -282,7 +282,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         return result;
     }
 
-    RSA::Result RSA::LoadPublicKey(std::string keyStr,
+    RSA::Result RSA::LoadPublicKey(const std::string &keyStr,
                                    CryptoPP::RSA::PublicKey &key,
                                    PEMFormatType format) {
         Result result;
@@ -294,7 +294,7 @@ namespace CryptoToysPP::Algorithm::Advance {
             spdlog::debug("Loading public key, format: {}",
                           PEMFormatTypeToString(format));
 
-            // 找到BEGIN标记
+            // Locate BEGIN marker
             size_t beginPos = keyStr.find(BEGIN_MARKER);
             if (beginPos == std::string::npos) {
                 spdlog::error("Missing BEGIN marker in public key");
@@ -303,7 +303,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 定位BEGIN标记的结束位置
+            // Find end of BEGIN marker
             size_t beginEnd =
                     keyStr.find("-----", beginPos + BEGIN_MARKER.size());
             if (beginEnd == std::string::npos) {
@@ -312,9 +312,9 @@ namespace CryptoToysPP::Algorithm::Advance {
                 result.success = false;
                 return result;
             }
-            beginEnd += 5; // 跳过"-----"
+            beginEnd += 5; // Skip "-----"
 
-            // 找到END标记
+            // Locate END marker
             size_t endPos = keyStr.find(END_MARKER, beginEnd);
             if (endPos == std::string::npos) {
                 spdlog::error("Missing END marker in public key");
@@ -323,7 +323,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 定位END标记的结束位置
+            // Find end of END marker
             size_t endEnd = keyStr.find("-----", endPos + END_MARKER.size());
             if (endEnd == std::string::npos) {
                 spdlog::error("Invalid END marker in public key");
@@ -332,10 +332,10 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 提取BEGIN和END之间的内容
+            // Extract content between BEGIN and END
             std::string base64 = keyStr.substr(beginEnd, endPos - beginEnd);
 
-            // 移除所有非Base64字符（包括换行符、空格等）
+            // Remove non-Base64 characters (including newlines/spaces)
             base64.erase(std::ranges::remove_if(base64,
                                                 [](char c) {
                                                     return !(std::isalnum(c) ||
@@ -346,20 +346,20 @@ namespace CryptoToysPP::Algorithm::Advance {
                                  .begin(),
                          base64.end());
 
-            // 验证Base64长度（必须是4的倍数）
+            // Validate Base64 length (must be multiple of 4)
             if (base64.size() % 4 != 0) {
-                // 添加填充字符
+                // Add padding characters
                 size_t padding = 4 - (base64.size() % 4);
                 base64.append(padding, '=');
             }
 
-            // Base64解码
+            // Base64 decoding
             std::string der;
             CryptoPP::StringSource ss(base64, true,
                                       new CryptoPP::Base64Decoder(
                                               new CryptoPP::StringSink(der)));
 
-            // 验证DER长度
+            // Validate DER length
             if (der.empty()) {
                 spdlog::error("DER decoding produced no data");
                 result.error = "DER decoding failed";
@@ -367,11 +367,11 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 使用BERDecode而不是Load
+            // Use BERDecode instead of Load
             CryptoPP::StringSource derSource(der, true);
-            key.BERDecode(derSource); // 关键修复：使用BERDecode
+            key.BERDecode(derSource); // Critical fix: using BERDecode
 
-            // 验证密钥参数
+            // Validate key parameters
             const CryptoPP::Integer &n = key.GetModulus();
             const CryptoPP::Integer &e = key.GetPublicExponent();
             if (n.IsZero() || e.IsZero()) {
@@ -398,7 +398,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         return result;
     }
 
-    RSA::Result RSA::LoadPrivateKey(std::string keyStr,
+    RSA::Result RSA::LoadPrivateKey(const std::string &keyStr,
                                     CryptoPP::RSA::PrivateKey &key,
                                     PEMFormatType format) {
         Result result;
@@ -410,7 +410,7 @@ namespace CryptoToysPP::Algorithm::Advance {
             spdlog::debug("Loading private key, format: {}",
                           PEMFormatTypeToString(format));
 
-            // 找到BEGIN标记
+            // Locate BEGIN marker
             size_t beginPos = keyStr.find(BEGIN_MARKER);
             if (beginPos == std::string::npos) {
                 spdlog::error("Missing BEGIN marker in private key");
@@ -419,7 +419,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 定位BEGIN标记的结束位置
+            // Find end of BEGIN marker
             size_t beginEnd =
                     keyStr.find("-----", beginPos + BEGIN_MARKER.size());
             if (beginEnd == std::string::npos) {
@@ -428,9 +428,9 @@ namespace CryptoToysPP::Algorithm::Advance {
                 result.success = false;
                 return result;
             }
-            beginEnd += 5; // 跳过"-----"
+            beginEnd += 5; // Skip "-----"
 
-            // 找到END标记
+            // Locate END marker
             size_t endPos = keyStr.find(END_MARKER, beginEnd);
             if (endPos == std::string::npos) {
                 spdlog::error("Missing END marker in private key");
@@ -439,7 +439,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 定位END标记的结束位置
+            // Find end of END marker
             size_t endEnd = keyStr.find("-----", endPos + END_MARKER.size());
             if (endEnd == std::string::npos) {
                 spdlog::error("Invalid END marker in private key");
@@ -448,10 +448,10 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 提取BEGIN和END之间的内容
+            // Extract content between BEGIN and END
             std::string base64 = keyStr.substr(beginEnd, endPos - beginEnd);
 
-            // 移除所有非Base64字符（包括换行符、空格等）
+            // Remove non-Base64 characters (including newlines/spaces)
             base64.erase(std::ranges::remove_if(base64,
                                                 [](char c) {
                                                     return !(std::isalnum(c) ||
@@ -462,20 +462,20 @@ namespace CryptoToysPP::Algorithm::Advance {
                                  .begin(),
                          base64.end());
 
-            // 验证Base64长度（必须是4的倍数）
+            // Validate Base64 length (must be multiple of 4)
             if (base64.size() % 4 != 0) {
-                // 添加填充字符
+                // Add padding characters
                 size_t padding = 4 - (base64.size() % 4);
                 base64.append(padding, '=');
             }
 
-            // Base64解码
+            // Base64 decoding
             std::string der;
             CryptoPP::StringSource ss(base64, true,
                                       new CryptoPP::Base64Decoder(
                                               new CryptoPP::StringSink(der)));
 
-            // 验证DER长度
+            // Validate DER length
             if (der.empty()) {
                 spdlog::error("DER decoding produced no data");
                 result.error = "DER decoding failed";
@@ -483,11 +483,11 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            // 使用BERDecode而不是Load
+            // Use BERDecode instead of Load
             CryptoPP::StringSource derSource(der, true);
-            key.BERDecode(derSource); // 关键修复：使用BERDecode
+            key.BERDecode(derSource); // Critical fix: using BERDecode
 
-            // 验证密钥参数
+            // Validate key parameters
             const CryptoPP::Integer &n = key.GetModulus();
             const CryptoPP::Integer &e = key.GetPublicExponent();
             const CryptoPP::Integer &d = key.GetPrivateExponent();
@@ -515,8 +515,8 @@ namespace CryptoToysPP::Algorithm::Advance {
         return result;
     }
 
-    RSA::Result RSA::Encrypt(std::string plainText,
-                             std::string pubKeyStr,
+    RSA::Result RSA::Encrypt(const std::string &plainText,
+                             const std::string &pubKeyStr,
                              PEMFormatType format,
                              PaddingScheme padding) {
         Result result;
@@ -537,51 +537,51 @@ namespace CryptoToysPP::Algorithm::Advance {
             switch (padding) {
                 case PaddingScheme::PKCS1v15: {
                     CryptoPP::RSAES_PKCS1v15_Encryptor encryptor(pubKey);
-                    CryptoPP::StringSource(plainText, true,
-                                           new CryptoPP::PK_EncryptorFilter(
-                                                   rng, encryptor,
-                                                   new CryptoPP::StringSink(
-                                                           cipherText)));
+                    CryptoPP::StringSource ss(plainText, true,
+                                              new CryptoPP::PK_EncryptorFilter(
+                                                      rng, encryptor,
+                                                      new CryptoPP::StringSink(
+                                                              cipherText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA1: {
                     CryptoPP::RSAES_OAEP_SHA_Encryptor encryptor(pubKey);
-                    CryptoPP::StringSource(plainText, true,
-                                           new CryptoPP::PK_EncryptorFilter(
-                                                   rng, encryptor,
-                                                   new CryptoPP::StringSink(
-                                                           cipherText)));
+                    CryptoPP::StringSource ss(plainText, true,
+                                              new CryptoPP::PK_EncryptorFilter(
+                                                      rng, encryptor,
+                                                      new CryptoPP::StringSink(
+                                                              cipherText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA256: {
                     CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA256>>::Encryptor
                             encryptor(pubKey);
-                    CryptoPP::StringSource(plainText, true,
-                                           new CryptoPP::PK_EncryptorFilter(
-                                                   rng, encryptor,
-                                                   new CryptoPP::StringSink(
-                                                           cipherText)));
+                    CryptoPP::StringSource ss(plainText, true,
+                                              new CryptoPP::PK_EncryptorFilter(
+                                                      rng, encryptor,
+                                                      new CryptoPP::StringSink(
+                                                              cipherText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA512: {
                     CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA512>>::Encryptor
                             encryptor(pubKey);
-                    CryptoPP::StringSource(plainText, true,
-                                           new CryptoPP::PK_EncryptorFilter(
-                                                   rng, encryptor,
-                                                   new CryptoPP::StringSink(
-                                                           cipherText)));
+                    CryptoPP::StringSource ss(plainText, true,
+                                              new CryptoPP::PK_EncryptorFilter(
+                                                      rng, encryptor,
+                                                      new CryptoPP::StringSink(
+                                                              cipherText)));
                     break;
                 }
                 case PaddingScheme::NO_PADDING: {
-                    // 确保数据长度等于模数长度
+                    // Ensure data length equals modulus size
                     if (plainText.size() > modulusSize) {
                         result.error = "Data too large for NO_PADDING mode";
                         result.success = false;
                         return result;
                     }
 
-                    // 左填充零字节
+                    // Left-pad with zero bytes
                     std::string padded(modulusSize - plainText.size(), 0);
                     padded.append(plainText);
 
@@ -602,14 +602,14 @@ namespace CryptoToysPP::Algorithm::Advance {
                     return result;
             }
 
-            // Base64编码（无换行）
+            // Base64 encoding (without line breaks)
             std::string base64Result;
-            CryptoPP::StringSource(
-                    cipherText, true,
-                    new CryptoPP::Base64Encoder(new CryptoPP::StringSink(
-                                                        base64Result),
-                                                false // 不换行
-                                                ));
+            CryptoPP::StringSource
+                    source(cipherText, true,
+                           new CryptoPP::Base64Encoder(new CryptoPP::StringSink(
+                                                               base64Result),
+                                                       false // no line breaks
+                                                       ));
 
             result.data = base64Result;
             result.success = true;
@@ -623,8 +623,8 @@ namespace CryptoToysPP::Algorithm::Advance {
         return result;
     }
 
-    RSA::Result RSA::Decrypt(std::string cipherText,
-                             std::string privKeyStr,
+    RSA::Result RSA::Decrypt(const std::string &cipherText,
+                             const std::string &privKeyStr,
                              PEMFormatType format,
                              PaddingScheme padding) {
         Result result;
@@ -638,12 +638,12 @@ namespace CryptoToysPP::Algorithm::Advance {
                      cipherText.size(), PaddingSchemeToString(padding));
 
         try {
-            // Base64解码
+            // Base64 decoding
             std::string binaryCipher;
-            CryptoPP::StringSource ss(cipherText, true,
-                                      new CryptoPP::Base64Decoder(
-                                              new CryptoPP::StringSink(
-                                                      binaryCipher)));
+            CryptoPP::StringSource stringSource(
+                    cipherText, true,
+                    new CryptoPP::Base64Decoder(
+                            new CryptoPP::StringSink(binaryCipher)));
 
             const size_t modulusSize = privKey.GetModulus().ByteCount();
             std::string decryptedText;
@@ -652,40 +652,40 @@ namespace CryptoToysPP::Algorithm::Advance {
             switch (padding) {
                 case PaddingScheme::PKCS1v15: {
                     CryptoPP::RSAES_PKCS1v15_Decryptor decryptor(privKey);
-                    CryptoPP::StringSource(binaryCipher, true,
-                                           new CryptoPP::PK_DecryptorFilter(
-                                                   rng, decryptor,
-                                                   new CryptoPP::StringSink(
-                                                           decryptedText)));
+                    CryptoPP::StringSource ss(binaryCipher, true,
+                                              new CryptoPP::PK_DecryptorFilter(
+                                                      rng, decryptor,
+                                                      new CryptoPP::StringSink(
+                                                              decryptedText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA1: {
                     CryptoPP::RSAES_OAEP_SHA_Decryptor decryptor(privKey);
-                    CryptoPP::StringSource(binaryCipher, true,
-                                           new CryptoPP::PK_DecryptorFilter(
-                                                   rng, decryptor,
-                                                   new CryptoPP::StringSink(
-                                                           decryptedText)));
+                    CryptoPP::StringSource ss(binaryCipher, true,
+                                              new CryptoPP::PK_DecryptorFilter(
+                                                      rng, decryptor,
+                                                      new CryptoPP::StringSink(
+                                                              decryptedText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA256: {
                     CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA256>>::Decryptor
                             decryptor(privKey);
-                    CryptoPP::StringSource(binaryCipher, true,
-                                           new CryptoPP::PK_DecryptorFilter(
-                                                   rng, decryptor,
-                                                   new CryptoPP::StringSink(
-                                                           decryptedText)));
+                    CryptoPP::StringSource ss(binaryCipher, true,
+                                              new CryptoPP::PK_DecryptorFilter(
+                                                      rng, decryptor,
+                                                      new CryptoPP::StringSink(
+                                                              decryptedText)));
                     break;
                 }
                 case PaddingScheme::OAEP_SHA512: {
                     CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA512>>::Decryptor
                             decryptor(privKey);
-                    CryptoPP::StringSource(binaryCipher, true,
-                                           new CryptoPP::PK_DecryptorFilter(
-                                                   rng, decryptor,
-                                                   new CryptoPP::StringSink(
-                                                           decryptedText)));
+                    CryptoPP::StringSource ss(binaryCipher, true,
+                                              new CryptoPP::PK_DecryptorFilter(
+                                                      rng, decryptor,
+                                                      new CryptoPP::StringSink(
+                                                              decryptedText)));
                     break;
                 }
                 case PaddingScheme::NO_PADDING: {
@@ -705,7 +705,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                                      decryptedText.data()),
                              modulusSize);
 
-                    // 移除前导零
+                    // Remove leading zeros
                     size_t startPos = decryptedText.find_first_not_of('\0');
                     if (startPos != std::string::npos) {
                         decryptedText = decryptedText.substr(startPos);
@@ -730,6 +730,4 @@ namespace CryptoToysPP::Algorithm::Advance {
         }
         return result;
     }
-
-
 } // namespace CryptoToysPP::Algorithm::Advance

@@ -41,7 +41,7 @@ namespace CryptoToysPP::Route {
         spdlog::info("Processing resource request: {}", uriStr);
 
         try {
-            // 安全验证资源路径
+            // Security validation of resource path
             ValidationResult pathResult = ValidateResourcePath(uri);
             if (!pathResult.valid) {
                 spdlog::error("Path validation failed: {} - {}", uriStr,
@@ -52,7 +52,7 @@ namespace CryptoToysPP::Route {
             const std::string &resourceKey = pathResult.safePath;
             spdlog::debug("Validated resource key: {}", resourceKey);
 
-            // 获取资源描述符
+            // Retrieve resource descriptor
             ResourceDescriptor descriptor = GetResourceDescriptor(resourceKey);
             if (!descriptor.valid) {
                 spdlog::error("Resource descriptor error: {}",
@@ -60,7 +60,7 @@ namespace CryptoToysPP::Route {
                 return nullptr;
             }
 
-            // 边界检查
+            // Boundary validation
             if (!CheckResourceBounds(descriptor)) {
                 spdlog::error("Resource bounds violation: {} [offset={}, "
                               "length={}, totalSize={}]",
@@ -69,7 +69,7 @@ namespace CryptoToysPP::Route {
                 return nullptr;
             }
 
-            // 创建安全的内存流
+            // Create secure memory stream
             return CreateSecureMemoryStream(resourceKey, descriptor);
 
         } catch (const std::exception &e) {
@@ -87,7 +87,7 @@ namespace CryptoToysPP::Route {
         ValidationResult result;
         wxString path = uri.AfterFirst(':');
 
-        // 规范化路径
+        // Normalize path
         path = path.Trim(false).Trim(true);
         while (path.StartsWith("/"))
             path = path.Mid(1);
@@ -97,13 +97,13 @@ namespace CryptoToysPP::Route {
             return result;
         }
 
-        // 安全检测：防止路径遍历攻击
+        // Security checks: Prevent path traversal attacks
         if (path.Contains("..") || path.Contains("//")) {
             result.message = "Path contains illegal sequence";
             return result;
         }
 
-        // 检查文件扩展名
+        // Validate file extension
         const wxString ext = wxFileName(path).GetExt().Lower();
         static const std::vector<wxString> allowedExtensions = {"html", "js",
                                                                 "css",  "png",
@@ -111,13 +111,13 @@ namespace CryptoToysPP::Route {
                                                                 "gif",  "json",
                                                                 "ico",  "svg"};
 
-        if (std::ranges::find(allowedExtensions,
-                      ext) == allowedExtensions.end()) {
+        if (std::ranges::find(allowedExtensions, ext) ==
+            allowedExtensions.end()) {
             result.message = "Unsupported resource type: " + ext.ToStdString();
             return result;
         }
 
-        // 标准化路径格式
+        // Standardize path format
         path.Replace("\\", "/", true);
         result.safePath = "/" + path.ToStdString();
         result.valid = true;
@@ -148,20 +148,20 @@ namespace CryptoToysPP::Route {
 
     bool
     SchemeHandler::CheckResourceBounds(const ResourceDescriptor &descriptor) {
-        // 检查偏移量是否有效
+        // Validate offset
         if (descriptor.offset >= Resources::RESOURCE_DATA.size) {
             spdlog::error("Offset exceeds resource size: {} >= {}",
                           descriptor.offset, Resources::RESOURCE_DATA.size);
             return false;
         }
 
-        // 检查长度是否有效
+        // Validate length
         if (descriptor.length == 0) {
             spdlog::error("Zero-length resource");
             return false;
         }
 
-        // 检查是否越界
+        // Check boundary overflow
         if (descriptor.offset + descriptor.length >
             Resources::RESOURCE_DATA.size) {
             spdlog::error("Resource bounds exceeded: {}+{} > {}",
@@ -177,33 +177,33 @@ namespace CryptoToysPP::Route {
             const std::string &key,
             const ResourceDescriptor &descriptor) {
 
-        // 获取资源数据指针
+        // Access resource data pointer
         const uint8_t *dataPtr =
                 Resources::RESOURCE_DATA.data + descriptor.offset;
 
-        // 创建内存输入流
+        // Create memory input stream
         auto stream = std::make_unique<wxMemoryInputStream>(
                 reinterpret_cast<const char *>(dataPtr),
                 static_cast<size_t>(descriptor.length));
 
-        // 验证流完整性
+        // Verify stream integrity
         if (!stream->IsOk() ||
             stream->GetSize() != static_cast<size_t>(descriptor.length)) {
             spdlog::error("Stream creation failed for {}", key);
             throw std::runtime_error("Resource stream creation failed");
         }
 
-        // 获取MIME类型
+        // Determine MIME type
         wxString mimeType = GetMimeType(key);
         spdlog::debug("MIME type for {}: {}", key, mimeType.ToStdString());
 
-        // 创建文件对象
+        // Create file object
         return new wxFSFile(stream.release(), "app:/" + key, mimeType,
                             wxEmptyString, wxDateTime::Now());
     }
 
     wxString SchemeHandler::GetMimeType(const std::string &path) {
-        // 基于文件扩展名的MIME类型映射
+        // MIME type mapping by file extension
         static const std::map<std::string, wxString> mimeMap =
                 {{".html", "text/html"},
                  {".htm", "text/html"},
@@ -217,7 +217,7 @@ namespace CryptoToysPP::Route {
                  {".ico", "image/x-icon"},
                  {".svg", "image/svg+xml"}};
 
-        // 查找匹配的扩展名
+        // Match file extension
         for (const auto &[ext, mime] : mimeMap) {
             if (path.find(ext) != std::string::npos) {
                 return mime;

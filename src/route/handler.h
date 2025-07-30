@@ -32,7 +32,7 @@
 #include <spdlog/spdlog.h>
 
 namespace CryptoToysPP::Route {
-    // 增强的安全协议处理器
+    // Enhanced secure protocol handler
     class SchemeHandler : public wxWebViewHandler {
     private:
         std::mutex resource_map_mutex{};
@@ -55,22 +55,22 @@ namespace CryptoToysPP::Route {
         wxFSFile *GetFile(const wxString &uri) override;
 
     private:
-        // 路径安全验证函数
+        // Resource path security validation function
         static ValidationResult ValidateResourcePath(const wxString &uri);
 
-        // 安全获取资源描述符
+        // Secure resource descriptor retrieval
         ResourceDescriptor GetResourceDescriptor(const std::string &key);
 
-        // 资源边界安全检查
+        // Resource boundary safety check
         static bool CheckResourceBounds(const ResourceDescriptor &descriptor);
 
-        // 安全创建内存流
+        // Secure memory stream creation
         static wxFSFile *
         CreateSecureMemoryStream(const std::string &key,
                                  const ResourceDescriptor &descriptor);
 
         static wxString GetMimeType(const std::string &path);
     };
-} // namespace CryptoToysPP
+} // namespace CryptoToysPP::Route
 
 #endif // HANDLER_H

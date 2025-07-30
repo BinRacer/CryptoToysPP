@@ -35,14 +35,14 @@ namespace CryptoToysPP::Route {
     using HandlerFunc = std::function<nlohmann::json(const nlohmann::json &)>;
     struct PairHash {
         size_t operator()(const std::pair<std::string, std::string> &p) const {
-            // 使用黄金比例常数进行哈希组合
+            // Use golden ratio constant for hash combination
             constexpr size_t Golden = 0x9e3779b97f4a7c15;
 
-            // 计算两个字符串的独立哈希值
+            // Compute independent hash values for the two strings
             const size_t h1 = std::hash<std::string>{}(p.first);
             const size_t h2 = std::hash<std::string>{}(p.second);
 
-            // 使用黄金比例常数进行组合
+            // Combine using golden ratio constant
             return h1 ^ (h2 + Golden + (h1 << 6) + (h1 >> 2));
         }
     };

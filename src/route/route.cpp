@@ -46,7 +46,7 @@ namespace CryptoToysPP::Route {
     Route::Route() {
         spdlog::debug("Initializing route handlers...");
 
-        // 注册API端点
+        // Register API endpoints
         Add("POST", "/api/base/encode", [this](const nlohmann::json &data) {
             return BaseEncode(data);
         });
@@ -227,14 +227,17 @@ namespace CryptoToysPP::Route {
         const std::string plaintext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
-                ?Algorithm::Advance::AES::HexToString(data.value("key", std::string()))
+                ? Algorithm::Advance::AES::HexToString(
+                          data.value("key", std::string()))
                 : data.value("key", std::string());
         const std::string ivFormat = data.value("ivFormat", std::string());
         const std::string iv = (ivFormat == "hex")
-                ? Algorithm::Advance::AES::HexToString(data.value("iv", std::string()))
+                ? Algorithm::Advance::AES::HexToString(
+                          data.value("iv", std::string()))
                 : data.value("iv", std::string());
-        Algorithm::Advance::AES::AESMode mode = Algorithm::Advance::AES::StringToAESMode(
-                data.value("mode", std::string()));
+        Algorithm::Advance::AES::AESMode mode =
+                Algorithm::Advance::AES::StringToAESMode(
+                        data.value("mode", std::string()));
         Algorithm::Advance::AES::PaddingScheme padding =
                 Algorithm::Advance::AES::StringToPaddingScheme(
                         data.value("padding", std::string()));
@@ -243,8 +246,9 @@ namespace CryptoToysPP::Route {
         Algorithm::Advance::AES::EncodingFormat outputEncoding =
                 Algorithm::Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Algorithm::Advance::AES::Encrypt(plaintext, mode, padding, keyBits,
-                                            key, iv, outputEncoding);
+        auto result = Algorithm::Advance::AES::Encrypt(plaintext, mode, padding,
+                                                       keyBits, key, iv,
+                                                       outputEncoding);
         if (result.success) {
             return result.data;
         } else {
@@ -257,14 +261,17 @@ namespace CryptoToysPP::Route {
         const std::string ciphertext = data.value("inputText", std::string());
         const std::string keyFormat = data.value("keyFormat", std::string());
         const std::string key = (keyFormat == "hex")
-                ? Algorithm::Advance::AES::HexToString(data.value("key", std::string()))
+                ? Algorithm::Advance::AES::HexToString(
+                          data.value("key", std::string()))
                 : data.value("key", std::string());
         const std::string ivFormat = data.value("ivFormat", std::string());
         const std::string iv = (ivFormat == "hex")
-                ? Algorithm::Advance::AES::HexToString(data.value("iv", std::string()))
+                ? Algorithm::Advance::AES::HexToString(
+                          data.value("iv", std::string()))
                 : data.value("iv", std::string());
-        Algorithm::Advance::AES::AESMode mode = Algorithm::Advance::AES::StringToAESMode(
-                data.value("mode", std::string()));
+        Algorithm::Advance::AES::AESMode mode =
+                Algorithm::Advance::AES::StringToAESMode(
+                        data.value("mode", std::string()));
         Algorithm::Advance::AES::PaddingScheme padding =
                 Algorithm::Advance::AES::StringToPaddingScheme(
                         data.value("padding", std::string()));
@@ -273,8 +280,9 @@ namespace CryptoToysPP::Route {
         Algorithm::Advance::AES::EncodingFormat inputEncoding =
                 Algorithm::Advance::AES::StringToEncodingFormat(
                         data.value("encoding", std::string()));
-        auto result = Algorithm::Advance::AES::Decrypt(ciphertext, mode, padding, keyBits,
-                                            key, iv, inputEncoding);
+        auto result = Algorithm::Advance::AES::Decrypt(ciphertext, mode,
+                                                       padding, keyBits, key,
+                                                       iv, inputEncoding);
         if (result.success) {
             return result.data;
         } else {
@@ -309,8 +317,9 @@ namespace CryptoToysPP::Route {
         Algorithm::Advance::RSA::PaddingScheme paddingScheme =
                 Algorithm::Advance::RSA::StringToPaddingScheme(
                         data.value("paddingScheme", std::string()));
-        auto result = Algorithm::Advance::RSA::Encrypt(plaintext, pubKeyStr, pemFormat,
-                                            paddingScheme);
+        auto result =
+                Algorithm::Advance::RSA::Encrypt(plaintext, pubKeyStr,
+                                                 pemFormat, paddingScheme);
         if (result.success) {
             return result.data;
         } else {
@@ -328,8 +337,9 @@ namespace CryptoToysPP::Route {
         Algorithm::Advance::RSA::PaddingScheme paddingScheme =
                 Algorithm::Advance::RSA::StringToPaddingScheme(
                         data.value("paddingScheme", std::string()));
-        auto result = Algorithm::Advance::RSA::Decrypt(cipherText, privKeyStr, pemFormat,
-                                            paddingScheme);
+        auto result =
+                Algorithm::Advance::RSA::Decrypt(cipherText, privKeyStr,
+                                                 pemFormat, paddingScheme);
         if (result.success) {
             return result.data;
         } else {
@@ -355,7 +365,7 @@ namespace CryptoToysPP::Route {
             spdlog::error("Invalid request: must be a JSON object");
             return MakeErrResp(400, "Invalid request format");
         }
-        // 验证必需字段
+        // Validate required fields
         if (!request.contains("__id")) {
             spdlog::error("Missing required field: '__id'");
             return MakeErrResp(400, "Required field '__id' is missing");
@@ -374,20 +384,19 @@ namespace CryptoToysPP::Route {
         try {
             const std::string method = request.value("method", std::string());
             const std::string path = request.value("path", std::string());
-            // 提取请求数据
+            // Extract request data
             const nlohmann::json data =
                     request.value("data", nlohmann::json::object());
             spdlog::info("[{}] Processing request for {} - {} : {}", requestId,
                          method, path, data.dump());
-            // API频率限制
+            // API rate limiting
             if (!CheckRateLimit(path)) {
-                spdlog::warn(
-                        "[{}] Rate limit exceeded for {} - {} (429 Too Many "
-                        "Requests)",
-                        requestId, method, path);
+                spdlog::warn("[{}] Rate limit exceeded for {} - {} (429 Too "
+                             "Many Requests)",
+                             requestId, method, path);
                 return MakeErrResp(429, "Too many requests");
             }
-            // 路由分发
+            // Route dispatch
             const auto key = std::make_pair(method, path);
             if (!routes.contains(key)) {
                 spdlog::warn("[{}] API endpoint not found: {} - {}", requestId,
@@ -411,18 +420,18 @@ namespace CryptoToysPP::Route {
 
     bool Route::CheckRateLimit(const std::string &path) {
         auto now = std::chrono::steady_clock::now();
-        auto &timePoints = rateLimits[path]; // 自动创建新队列
+        auto &timePoints = rateLimits[path]; // Automatically create new queue
 
-        // 清除过期记录 (修复类型问题)
+        // Expire outdated records (fixed type issue)
         while (!timePoints.empty()) {
             auto duration = std::chrono::duration_cast<std::chrono::seconds>(
                     now - timePoints.front());
             if (duration <= TIME_WINDOW)
-                break; // 检查是否在时间窗口内
+                break; // Check if within time window
             timePoints.pop();
         }
 
-        // 检查请求次数限制
+        // Check request limit
         if (timePoints.size() >= MAX_REQUESTS) {
             return false;
         }

@@ -34,7 +34,7 @@
 
 namespace CryptoToysPP::Gui {
     bool App::OnInit() {
-        // 创建日志目录
+        // Create log directory
         const wxString logDir =
                 wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
         if (!wxDirExists(logDir)) {
@@ -49,7 +49,7 @@ namespace CryptoToysPP::Gui {
                 logDir + wxFileName::GetPathSeparator() + "app.log";
 
         try {
-            // 初始化日志系统
+            // Initialize logging system
             std::shared_ptr<spdlog::sinks::sink> file_sink =
                     std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                             logPath.ToStdString(), 1024 * 1024 * 100, 10);
@@ -62,14 +62,16 @@ namespace CryptoToysPP::Gui {
                                                            sinks.begin(),
                                                            sinks.end());
 
-            // 配置日志格式
+            // Configure log format
             logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
             logger->set_level(spdlog::level::debug);
             spdlog::set_default_logger(logger);
 
-            // 添加日志刷新配置
-            spdlog::flush_on(spdlog::level::info); // 重要级别日志立即刷新
-            spdlog::flush_every(std::chrono::seconds(5)); // 每5秒自动刷新
+            // Configure log flushing policy
+            spdlog::flush_on(spdlog::level::info); // Immediate flush for
+                                                   // important levels
+            spdlog::flush_every(
+                    std::chrono::seconds(5)); // Automatic flush every 5 seconds
 
             spdlog::info("Logging system initialized successfully");
             spdlog::debug("Log file path: {}", logPath.ToStdString());
@@ -82,19 +84,19 @@ namespace CryptoToysPP::Gui {
             return false;
         }
 
-// macOS 特定配置
+// macOS specific configuration
 #ifdef __WXOSX__
         wxWebView::SetBackend(wxWebViewBackendWebKit);
         spdlog::debug("macOS: Using WebKit backend");
 #endif
 
-        // 创建主框架
+        // Create main application frame
         return new MainFrame();
     }
 
     int App::OnExit() {
         spdlog::info("Application exiting...");
-        spdlog::shutdown(); // 这会自动刷新所有日志
+        spdlog::shutdown(); // Automatically flushes all logs
         return wxApp::OnExit();
     }
 } // namespace CryptoToysPP::Gui
