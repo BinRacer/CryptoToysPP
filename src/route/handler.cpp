@@ -38,7 +38,7 @@ namespace CryptoToysPP::Route {
 
     wxFSFile *SchemeHandler::GetFile(const wxString &uri) {
         const std::string uriStr = uri.ToStdString();
-        spdlog::info("Processing resource request: {}", uriStr);
+        spdlog::debug("Processing resource request: {}", uriStr);
 
         try {
             // Security validation of resource path

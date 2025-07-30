@@ -154,7 +154,7 @@ namespace CryptoToysPP::Algorithm::Advance {
     RSA::GenerateKeyPair(KeySize keySize, PEMFormatType format) {
         Result publicKeyResult, privateKeyResult;
 
-        spdlog::info("Generating RSA key pair, size: {} bits",
+        spdlog::debug("Generating RSA key pair, size: {} bits",
                      static_cast<unsigned>(keySize));
 
         try {
@@ -172,7 +172,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 spdlog::error("Key generation failed during PEM encoding");
                 publicKeyResult.success = privateKeyResult.success = false;
             } else {
-                spdlog::info("Key pair generated successfully. Public key "
+                spdlog::debug("Key pair generated successfully. Public key "
                              "format: {}, Private key format: {}",
                              PEMFormatTypeToString(format),
                              PEMFormatTypeToString(format));
@@ -381,7 +381,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            spdlog::info(
+            spdlog::debug(
                     "Public key loaded successfully. Modulus size: {} bits",
                     n.BitCount());
             result.success = true;
@@ -498,7 +498,7 @@ namespace CryptoToysPP::Algorithm::Advance {
                 return result;
             }
 
-            spdlog::info(
+            spdlog::debug(
                     "Private key loaded successfully. Modulus size: {} bits",
                     n.BitCount());
             result.success = true;
@@ -526,7 +526,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         if (!result.success)
             return result;
 
-        spdlog::info("Encrypting {} bytes with padding scheme: {}",
+        spdlog::debug("Encrypting {} bytes with padding scheme: {}",
                      plainText.size(), PaddingSchemeToString(padding));
 
         try {
@@ -613,7 +613,7 @@ namespace CryptoToysPP::Algorithm::Advance {
 
             result.data = base64Result;
             result.success = true;
-            spdlog::info("Encryption successful. Ciphertext size: {} bytes "
+            spdlog::debug("Encryption successful. Ciphertext size: {} bytes "
                          "(Base64: {} chars)",
                          cipherText.size(), base64Result.size());
         } catch (const CryptoPP::Exception &e) {
@@ -634,7 +634,7 @@ namespace CryptoToysPP::Algorithm::Advance {
         if (!result.success)
             return result;
 
-        spdlog::info("Decrypting {} bytes with padding scheme: {}",
+        spdlog::debug("Decrypting {} bytes with padding scheme: {}",
                      cipherText.size(), PaddingSchemeToString(padding));
 
         try {
@@ -722,7 +722,7 @@ namespace CryptoToysPP::Algorithm::Advance {
 
             result.data = decryptedText;
             result.success = true;
-            spdlog::info("Decryption successful. Plaintext size: {} bytes",
+            spdlog::debug("Decryption successful. Plaintext size: {} bytes",
                          decryptedText.size());
         } catch (const CryptoPP::Exception &e) {
             result.error = "Decryption failed: " + std::string(e.what());

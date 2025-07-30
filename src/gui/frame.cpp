@@ -191,7 +191,7 @@ namespace CryptoToysPP::Gui {
     }
 
     void MainFrame::OnWebViewLoaded(wxWebViewEvent &evt) {
-        spdlog::info("Page loaded: {} [status={}]", evt.GetURL().ToStdString(),
+        spdlog::debug("Page loaded: {} [status={}]", evt.GetURL().ToStdString(),
                      evt.GetInt());
     }
 } // namespace CryptoToysPP::Gui
