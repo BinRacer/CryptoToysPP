@@ -3,6 +3,7 @@
 #   - C++20 support
 #   - Cross-platform dependency management
 #   - Custom runtime dependency handling
+#   - Pre-build resource generation
 # =====================================================================================
 cmake_minimum_required(VERSION 3.30)
 project(CryptoToysPP)
@@ -39,6 +40,37 @@ find_package(nlohmann_json 3.12 CONFIG REQUIRED)
 find_package(cryptopp 8.9 CONFIG REQUIRED)
 find_package(spdlog 1.15 CONFIG REQUIRED)
 
+# ─── Python Build Helpers ──────────────────────────────────────────────────────
+find_package(Python COMPONENTS Interpreter REQUIRED)
+
+# ─── Resource Generation (Pre-Build) ───────────────────────────────────────────
+set(GENERATE_RESOURCES_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/generate_resources.py")
+
+# Verify script existence
+if(NOT EXISTS ${GENERATE_RESOURCES_SCRIPT})
+    message(FATAL_ERROR "Resource generation script not found: ${GENERATE_RESOURCES_SCRIPT}")
+endif()
+
+# Configure resource output directory
+set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/src/resources")
+set(RESOURCE_HEADER "${RESOURCES_DIR}/resources.h")
+set(RESOURCE_SOURCE "${RESOURCES_DIR}/resources.cpp")
+
+# Add pre-build custom command for resource generation
+add_custom_command(
+        OUTPUT ${RESOURCE_HEADER} ${RESOURCE_SOURCE}
+        COMMAND ${Python_EXECUTABLE} ${GENERATE_RESOURCES_SCRIPT}
+        DEPENDS ${GENERATE_RESOURCES_SCRIPT}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generating resource files: ${RESOURCE_HEADER} and ${RESOURCE_SOURCE}"
+        VERBATIM
+)
+
+# Create virtual target to ensure resource generation
+add_custom_target(generate_resources ALL
+        DEPENDS ${RESOURCE_HEADER} ${RESOURCE_SOURCE}
+)
+
 # ─── wxWidgets Configuration ───────────────────────────────────────────────────
 set(wxBUILD_SHARED ON CACHE BOOL "Shared library build")
 set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Monolithic build disabled")
@@ -48,7 +80,7 @@ if(wxWidgets_FOUND)
     message(STATUS "Using system-installed wxWidgets ${wxWidgets_VERSION}")
     set(WXWEBVIEW_TARGET wx::webview)
 
-    # Get library directory for Windows/macOS
+    # Determine library directory (Windows/macOS)
     if(WIN32 OR APPLE)
         get_target_property(_wx_lib_dir wx::base LIBRARY_OUTPUT_DIRECTORY)
         if(_wx_lib_dir AND EXISTS "${_wx_lib_dir}")
@@ -106,7 +138,7 @@ if(NOT DEFINED wx_runtime_dir)
 endif()
 
 # ─── Source Collection ─────────────────────────────────────────────────────────
-include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/src ${RESOURCES_DIR})
 
 message(STATUS "Collecting source files from: ${CMAKE_SOURCE_DIR}/src")
 file(GLOB_RECURSE SOURCE_FILES
@@ -120,8 +152,17 @@ file(GLOB_RECURSE SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/*.cc"
 )
 
+# Add generated resources to source collection
+list(APPEND SOURCE_FILES
+        ${RESOURCE_HEADER}
+        ${RESOURCE_SOURCE}
+)
+
 # ─── Executable Target ─────────────────────────────────────────────────────────
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+
+# Ensure resource generation completes before build
+add_dependencies(${PROJECT_NAME} generate_resources)
 
 # Windows-specific configuration
 if(WIN32)
@@ -170,10 +211,8 @@ if(WIN32 AND wxBUILD_SHARED)
     )
 endif()
 
-# ─── Python Build Helper ───────────────────────────────────────────────────────
-find_package(Python COMPONENTS Interpreter REQUIRED)
-
-# Detect current build configuration
+# ─── Build Output Copying ──────────────────────────────────────────────────────
+# Identify current build configuration
 if(CMAKE_BUILD_TYPE)
     set(CURRENT_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 else()

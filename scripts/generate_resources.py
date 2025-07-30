@@ -1,110 +1,175 @@
+"""
+Modern Resource Generator
+=========================
+Optimized version preserving original C++ resource generation logic
+Generates:
+  src/resources/
+    ├── resources.h
+    └── resources.cpp
+"""
+
 import os
 import sys
+import argparse
 from pathlib import Path
+from typing import Dict, Tuple, Generator
 
-def main():
-    root_dir = Path(__file__).parent.parent
-    ui_dir = root_dir / "ui"
-    header_path = root_dir / "src/resources/resources.h"
-    cpp_path = root_dir / "src/resources/resources.cpp"  # 新增.cpp文件存储数据
 
-    # 确保输出目录存在
-    header_path.parent.mkdir(parents=True, exist_ok=True)
-    cpp_path.parent.mkdir(parents=True, exist_ok=True)
-
-    resource_map = {}
-    resource_data = []
-    current_offset = 0
-
-    # 收集所有UI文件并按路径排序保证稳定性
-    ui_files = []
+def collect_ui_files(ui_dir: Path) -> Generator[Tuple[str, Path], None, None]:
+    """Collect UI files with deterministic path ordering"""
     for root, _, files in os.walk(ui_dir):
         for file in files:
-            full_path = os.path.join(root, file)
-            rel_path = os.path.relpath(full_path, ui_dir)
-            posix_path = f"/{rel_path.replace('\\', '/')}"
-            ui_files.append((posix_path, full_path))
+            file_path = Path(root) / file
+            rel_path = os.path.relpath(file_path, ui_dir)
+            yield f"/{rel_path.replace('\\', '/')}", file_path
 
-    # 按路径排序保证数据顺序一致性
-    ui_files.sort(key=lambda x: x[0])
 
-    for posix_path, full_path in ui_files:
-        # 读取文件内容
-        with open(full_path, 'rb') as f:
-            content = f.read()
+def create_header_file(header_path: Path,
+                       resource_map: Dict[str, Tuple[int, int]]) -> None:
+    """Generate header file with original C++ logic preserved"""
+    with header_path.open('w', encoding='utf-8', newline='\n') as f:
+        f.write("#pragma once\n")
+        f.write("#include <cstdint>\n")
+        f.write("#include <unordered_map>\n")
+        f.write("#include <string>\n")
+        f.write("#include <utility>\n\n")
+        f.write("namespace CryptoToysPP::Resources {\n")
+        f.write("    // Structure for resource data reference\n")
+        f.write("    struct ResourceData {\n")
+        f.write("        const uint8_t* data;   // Pointer to resource bytes\n")
+        f.write("        const size_t size;     // Total resource size\n")
+        f.write("    };\n\n")
+        f.write("    // Global resource data instance\n")
+        f.write("    extern const ResourceData RESOURCE_DATA;\n\n")
+        f.write("    // Mapping from resource path to (offset, length)\n")
+        f.write("    inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {\n")
 
-        # 添加到数据池并记录位置/长度
-        resource_data.append(content)
-        resource_map[posix_path] = (current_offset, len(content))
-        current_offset += len(content)
-
-    # 生成.cpp资源数据文件
-    with open(cpp_path, 'w', encoding='utf-8', newline='\n') as cpp:
-        cpp.write('#include "resources.h"\n\n')
-        cpp.write('namespace CryptoToysPP::Resources {\n')
-        cpp.write('    // 编译期初始化的资源数据池\n')
-        cpp.write('    constexpr uint8_t RESOURCE_DATA_ARRAY[] = {\n')
-
-        # 写入所有资源的字节数据
-        byte_counter = 0
-        for data in resource_data:
-            for byte in data:
-                # 每16字节换行
-                if byte_counter % 16 == 0:
-                    cpp.write(f'        ')
-
-                cpp.write(f'0x{byte:02X}, ')
-                byte_counter += 1
-
-                # 处理换行
-                if byte_counter % 16 == 0:
-                    cpp.write('\n')
-
-        # 处理最后一行
-        if byte_counter % 16 != 0:
-            cpp.write('\n')
-        cpp.write('    };\n\n')
-
-        # 在头文件中声明数据结构
-        cpp.write('    const ResourceData RESOURCE_DATA = {\n')
-        cpp.write('        .data = RESOURCE_DATA_ARRAY,\n')
-        cpp.write(f'        .size = {current_offset}\n')
-        cpp.write('    };\n} // namespace CryptoToysPP::Resources\n')
-
-    # 生成头文件
-    with open(header_path, 'w', encoding='utf-8', newline='\n') as header:
-        header.write("#pragma once\n")
-        header.write("#include <cstdint>\n")
-        header.write("#include <unordered_map>\n")
-        header.write("#include <string>\n")
-        header.write("#include <utility>\n\n")
-
-        # 声明命名空间防止冲突
-        header.write("namespace CryptoToysPP::Resources {\n")
-
-        # 定义数据结构
-        header.write("    struct ResourceData {\n")
-        header.write("        const uint8_t* data;   // 资源数据指针\n")
-        header.write("        const size_t size;     // 总数据大小\n")
-        header.write("    };\n\n")
-
-        # 声明外部常量
-        header.write("    // 编译期初始化的资源数据\n")
-        header.write("    extern const ResourceData RESOURCE_DATA;\n\n")
-
-        header.write("    // 资源路径到(偏移, 长度)的映射\n")
-        header.write("    inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {\n")
-
-        # 写入资源映射表
         for path, (offset, length) in resource_map.items():
             safe_path = path.replace('"', '\\"')
-            header.write(f'        {{ "{safe_path}", {{ {offset}, {length} }} }},\n')
+            f.write(f'        {{ "{safe_path}", {{ {offset}, {length} }} }},\n')
 
-        header.write("    };\n")
-        header.write("} // namespace CryptoToysPP::Resources\n")
+        f.write("    };\n")
+        f.write("} // namespace CryptoToysPP::Resources\n")
 
-    print(f"资源头文件已生成: {header_path}")
-    print(f"资源数据文件已生成: {cpp_path}")
+
+def create_cpp_file(cpp_path: Path,
+                    resource_data: bytes) -> None:
+    """Generate implementation file with original C++ logic preserved"""
+    with cpp_path.open('w', encoding='utf-8', newline='\n') as f:
+        f.write('#include "resources.h"\n\n')
+        f.write('namespace CryptoToysPP::Resources {\n')
+        f.write('    // Compile-time initialized resource byte array\n')
+        f.write('    constexpr uint8_t RESOURCE_DATA_ARRAY[] = {\n')
+
+        # Preserve original byte formatting
+        byte_count = 0
+        for byte in resource_data:
+            if byte_count % 16 == 0:
+                f.write('        ')
+            f.write(f'0x{byte:02X}, ')
+            byte_count += 1
+            if byte_count % 16 == 0:
+                f.write('\n')
+
+        if byte_count % 16 != 0:
+            f.write('\n')
+        f.write('    };\n\n')
+        f.write('    // Global resource data instance initialization\n')
+        f.write('    const ResourceData RESOURCE_DATA = {\n')
+        f.write('        .data = RESOURCE_DATA_ARRAY,\n')
+        f.write(f'        .size = {len(resource_data)}\n')
+        f.write('    };\n')
+        f.write('} // namespace CryptoToysPP::Resources\n')
+
+
+def generate_resources(ui_dir: Path, header_path: Path, cpp_path: Path) -> None:
+    """Core resource generation with enhanced logging and validation"""
+    # Validate UI directory
+    if not ui_dir.is_dir():
+        print(f"[ERROR] UI directory not found: {ui_dir}")
+        sys.exit(1)
+
+    # Ensure output directories exist
+    for path in [header_path.parent, cpp_path.parent]:
+        path.mkdir(parents=True, exist_ok=True)
+        if not path.is_dir():
+            print(f"[ERROR] Cannot create output directory: {path}")
+            sys.exit(1)
+
+    # Collect and sort UI files
+    print(f"[INFO] Scanning UI directory: {ui_dir}")
+    ui_files = sorted(collect_ui_files(ui_dir), key=lambda x: x[0])
+
+    if not ui_files:
+        print("[WARNING] No UI files found in source directory")
+        return
+
+    # Process resources
+    resource_map = {}
+    resource_chunks = []
+    current_offset = 0
+
+    for resource_path, file_path in ui_files:
+        print(f"[PROCESS] Reading {file_path}")
+        try:
+            content = file_path.read_bytes()
+            file_size = len(content)
+
+            resource_map[resource_path] = (current_offset, file_size)
+            resource_chunks.append(content)
+            current_offset += file_size
+        except Exception as e:
+            print(f"[ERROR] Failed to read {file_path}: {str(e)}")
+            sys.exit(1)
+
+    # Generate C++ files
+    combined_data = b''.join(resource_chunks)
+    print(f"[INFO] Generating header: {header_path}")
+    create_header_file(header_path, resource_map)
+
+    print(f"[INFO] Generating implementation: {cpp_path}")
+    create_cpp_file(cpp_path, combined_data)
+
+    print(f"[SUCCESS] Generated {len(ui_files)} resources ({len(combined_data)} bytes)")
+
+
+def main():
+    """Command-line interface with improved argument handling"""
+    parser = argparse.ArgumentParser(
+        description="Generate C++ resource files from UI assets",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    # Calculate default paths
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+
+    parser.add_argument(
+        "--ui-dir",
+        type=Path,
+        default=project_root / "ui",
+        help="Directory containing UI files"
+    )
+
+    parser.add_argument(
+        "--header",
+        dest="header_path",
+        type=Path,
+        default=project_root / "src" / "resources" / "resources.h",
+        help="Output header file path"
+    )
+
+    parser.add_argument(
+        "--cpp",
+        dest="cpp_path",
+        type=Path,
+        default=project_root / "src" / "resources" / "resources.cpp",
+        help="Output implementation file path"
+    )
+
+    args = parser.parse_args()
+    generate_resources(args.ui_dir, args.header_path, args.cpp_path)
+
 
 if __name__ == "__main__":
     main()

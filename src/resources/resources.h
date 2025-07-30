@@ -5,15 +5,16 @@
 #include <utility>
 
 namespace CryptoToysPP::Resources {
+    // Structure for resource data reference
     struct ResourceData {
-        const uint8_t* data;   // 资源数据指针
-        const size_t size;     // 总数据大小
+        const uint8_t* data;   // Pointer to resource bytes
+        const size_t size;     // Total resource size
     };
 
-    // 编译期初始化的资源数据
+    // Global resource data instance
     extern const ResourceData RESOURCE_DATA;
 
-    // 资源路径到(偏移, 长度)的映射
+    // Mapping from resource path to (offset, length)
     inline const std::unordered_map<std::string, std::pair<size_t, size_t>> RESOURCE_MAP = {
         { "/assets/crypto-CMO81S4n.js", { 0, 86520 } },
         { "/assets/crypto-DfQlMEvu.css", { 86520, 60819 } },
