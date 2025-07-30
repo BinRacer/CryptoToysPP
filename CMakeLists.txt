@@ -1,20 +1,26 @@
+# =====================================================================================
+# CryptoToysPP CMake Configuration
+#   - C++20 support
+#   - Cross-platform dependency management
+#   - Custom runtime dependency handling
+# =====================================================================================
 cmake_minimum_required(VERSION 3.30)
 project(CryptoToysPP)
 
-# 设置 C++20 标准
+# C++20 standard requirements
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
-# 跨平台 Vcpkg 配置
-set(USING_VCPKG OFF)
+# ─── Vcpkg Dependency Management ───────────────────────────────────────────────
+set(USING_VCPKG OFF CACHE BOOL "Enable Vcpkg dependency management")
 if(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
     set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
     set(USING_VCPKG ON)
 
-    # 自动检测目标平台
+    # Auto-detect target platform
     if(WIN32)
         set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "Vcpkg target triplet")
     elseif(APPLE)
@@ -28,21 +34,21 @@ else()
     message(STATUS "Vcpkg not found, using system package manager")
 endif()
 
-# 查找核心依赖
+# ─── Core Dependencies ─────────────────────────────────────────────────────────
 find_package(nlohmann_json 3.12 CONFIG REQUIRED)
 find_package(cryptopp 8.9 CONFIG REQUIRED)
 find_package(spdlog 1.15 CONFIG REQUIRED)
 
-# wxWidgets配置 - 优先使用系统安装版本
-set(wxBUILD_SHARED ON CACHE BOOL "Build as shared libraries")
-set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Disable monolithic build")
+# ─── wxWidgets Configuration ───────────────────────────────────────────────────
+set(wxBUILD_SHARED ON CACHE BOOL "Shared library build")
+set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Monolithic build disabled")
 
 find_package(wxWidgets 3.3 COMPONENTS webview QUIET)
 if(wxWidgets_FOUND)
     message(STATUS "Using system-installed wxWidgets ${wxWidgets_VERSION}")
     set(WXWEBVIEW_TARGET wx::webview)
 
-    # 获取系统安装的wxWidgets库目录(Win/macOS专用)
+    # Get library directory for Windows/macOS
     if(WIN32 OR APPLE)
         get_target_property(_wx_lib_dir wx::base LIBRARY_OUTPUT_DIRECTORY)
         if(_wx_lib_dir AND EXISTS "${_wx_lib_dir}")
@@ -54,16 +60,16 @@ if(wxWidgets_FOUND)
         endif()
     endif()
 else()
-    message(STATUS "wxWidgets 3.3 not found, building from source")
+    message(STATUS "Building wxWidgets from source")
     include(FetchContent)
 
-    # 构建选项配置
     set(wxBUILD_OPTIONS
-            "--disable-all"     # 禁用所有可选组件
-            "--enable-webview"  # 启用 WebView
-            "--enable-unicode"  # Unicode 支持
+            "--disable-all"     # Minimal components
+            "--enable-webview"  # WebView support
+            "--enable-unicode"  # Unicode encoding
     )
 
+    # Platform-specific build options
     if(WIN32)
         list(APPEND wxBUILD_OPTIONS "--with-msw")
     elseif(APPLE)
@@ -72,7 +78,6 @@ else()
         list(APPEND wxBUILD_OPTIONS "--with-gtk=3")
     endif()
 
-    # 获取wxWidgets源码
     FetchContent_Declare(
             wxWidgets
             GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
@@ -85,12 +90,10 @@ else()
 
     FetchContent_MakeAvailable(wxWidgets)
     set(WXWEBVIEW_TARGET wx::webview)
-
-    # 设置自构建wxWidgets运行时目录
     set(wx_runtime_dir "$<TARGET_FILE_DIR:wx::core>")
 endif()
 
-# 改进的运行时目录处理
+# ─── Runtime Directory Handling ────────────────────────────────────────────────
 if(NOT DEFINED wx_runtime_dir)
     if(WIN32)
         set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
@@ -102,10 +105,9 @@ if(NOT DEFINED wx_runtime_dir)
     endif()
 endif()
 
-# 包含源文件目录
+# ─── Source Collection ─────────────────────────────────────────────────────────
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
-# 源文件收集
 message(STATUS "Collecting source files from: ${CMAKE_SOURCE_DIR}/src")
 file(GLOB_RECURSE SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/*.h"
@@ -118,10 +120,10 @@ file(GLOB_RECURSE SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/*.cc"
 )
 
-# 添加可执行目标
+# ─── Executable Target ─────────────────────────────────────────────────────────
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
-# Windows专用配置
+# Windows-specific configuration
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
             WIN32_EXECUTABLE TRUE
@@ -129,7 +131,7 @@ if(WIN32)
     )
 endif()
 
-# 链接所有依赖项
+# ─── Dependency Linking ────────────────────────────────────────────────────────
 target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json
         cryptopp::cryptopp
@@ -137,9 +139,8 @@ target_link_libraries(${PROJECT_NAME}
         ${WXWEBVIEW_TARGET}
 )
 
-# 改进的运行时文件复制
+# ─── Runtime File Copying ──────────────────────────────────────────────────────
 if(WIN32 AND wxBUILD_SHARED)
-    # 只复制实际存在的库目标
     if(TARGET cryptopp::cryptopp)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMENT "Copying Crypto++ DLL"
@@ -160,9 +161,8 @@ if(WIN32 AND wxBUILD_SHARED)
         )
     endif()
 
-    # 复制整个wxWidgets DLL目录
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMENT "Copying wxWidgets runtime directory"
+            COMMENT "Copying wxWidgets runtime files"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${wx_runtime_dir}"
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
@@ -170,8 +170,28 @@ if(WIN32 AND wxBUILD_SHARED)
     )
 endif()
 
+# ─── Python Build Helper ───────────────────────────────────────────────────────
+find_package(Python COMPONENTS Interpreter REQUIRED)
 
-# 安装目标
+# Detect current build configuration
+if(CMAKE_BUILD_TYPE)
+    set(CURRENT_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+else()
+    set(CURRENT_BUILD_TYPE $<CONFIG>)
+endif()
+
+set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMENT "Copying build output to project directory"
+        COMMAND "${Python_EXECUTABLE}" "${COPY_SCRIPT_PATH}"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        "${CURRENT_BUILD_TYPE}"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        VERBATIM
+)
+
+# ─── Installation Target ───────────────────────────────────────────────────────
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .
