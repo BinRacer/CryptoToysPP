@@ -77,6 +77,9 @@ namespace CryptoToysPP::Algorithm::Advance {
     RSA::KeySize RSA::IntToKeySize(int keySize) {
         auto size = KeySize::KS_UNKNOWN;
         switch (keySize) {
+            case 512:
+                size = KeySize::KS_512;
+                break;
             case 1024:
                 size = KeySize::KS_1024;
                 break;
@@ -156,14 +159,11 @@ namespace CryptoToysPP::Algorithm::Advance {
 
         try {
             CryptoPP::AutoSeededRandomPool rng;
+            CryptoPP::InvertibleRSAFunction params;
+            params.GenerateRandomWithKeySize(rng, static_cast<unsigned>(keySize));
 
-            // 直接生成私钥对象避免对象切片
-            CryptoPP::RSA::PrivateKey privKey;
-            privKey.GenerateRandomWithKeySize(rng,
-                                              static_cast<unsigned>(keySize));
-
-            // 从有效私钥派生公钥
-            CryptoPP::RSA::PublicKey pubKey(privKey);
+            CryptoPP::RSA::PrivateKey privKey(params);
+            CryptoPP::RSA::PublicKey pubKey(params);
 
             publicKeyResult = EncodePEM(pubKey, format);
             privateKeyResult = EncodePEM(privKey, format);

@@ -42,11 +42,12 @@ namespace CryptoToysPP::Algorithm::Advance {
 
         // 密钥位数枚举
         enum class KeySize : unsigned {
+            KS_512 = 512,
             KS_1024 = 1024,
             KS_2048 = 2048,
             KS_3072 = 3072,
             KS_4096 = 4096,
-            KS_UNKNOWN,
+            KS_UNKNOWN = KS_4096,
         };
 
         // PEM 格式类型
