@@ -49,7 +49,7 @@ Static resources embedded in executables deliver desktop application-grade respo
 
 <div style="text-align: center; margin: 2rem 0;">
   <p><em>CryptoToysPP Modern Aesthetic Interface Design</em></p>
-  <img src="images/welcome.zh_CN.png" 
+  <img src="images/welcome.png" 
        alt="CryptoToysPP Interface Preview" 
        style="border-radius: 12px; 
               box-shadow: 0 4px 20px rgba(0,0,0,0.1);
