@@ -152,6 +152,24 @@ file(GLOB_RECURSE SOURCE_FILES
         "${CMAKE_SOURCE_DIR}/src/*.cc"
 )
 
+# ─── Windows Application Icon ────────────────────────────────────────────────
+if(WIN32)
+    # Verify icon resource existence
+    set(APP_ICON_RC "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.rc")
+    set(APP_ICO_FILE "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.ico")
+
+    if(EXISTS ${APP_ICON_RC} AND EXISTS ${APP_ICO_FILE})
+        # Add resource file to source collection
+        list(APPEND SOURCE_FILES ${APP_ICON_RC})
+        message(STATUS "Added Windows icon resource file: ${APP_ICON_RC}")
+
+        # Copy icon file to build directory (required for resource compilation)
+        configure_file(${APP_ICO_FILE} ${CMAKE_CURRENT_BINARY_DIR}/CryptoToysPP.windows.ico COPYONLY)
+    else()
+        message(WARNING "Missing Windows icon files in icons directory")
+    endif()
+endif()
+
 # Add generated resources to source collection
 list(APPEND SOURCE_FILES
         ${RESOURCE_HEADER}
