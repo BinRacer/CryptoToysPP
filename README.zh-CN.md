@@ -96,22 +96,53 @@ flowchart TD
 ### 🔧 系统依赖安装
 
 ```bash
-# Ubuntu/Debian（推荐使用Ubuntu 22.04+）
-sudo apt update && sudo apt install -y \
-  build-essential cmake \
-  libwxgtk-webview3.2-dev \
-  libcrypto++-dev
+##################################
+# Ubuntu（推荐使用 Ubuntu 22.04+）
+##################################
+sudo apt update
+# 安装基础依赖
+sudo apt install -y \
+    build-essential \
+    pkg-config \
+    libgtk-3-dev \
+    libwebkit2gtk-4.0-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libsoup2.4-dev
+# 推荐使用 vcpkg 安装其它依赖
+cd ~ && git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+# 设置 vcpkg 相关环境变量
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.bashrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.bashrc
+source ~/.bashrc
+# 使用 zsh 配置下面
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.zshrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.zshrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.zshrc
+source ~/.zshrc
+# 启用 Release 配置，避免同时构建 Debug 版本，加速构建时间
+echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-linux.cmake
+# 如果 https 网络受限，全局替换为 ssh
+git config --global url."git@github.com:".insteadOf "https://github.com/"
 
+
+##################################
 # macOS（推荐使用Homebrew）
-brew update && brew install \
-  cmake wxwidgets \
-  cryptopp spdlog nlohmann-json
+##################################
+brew update && brew install cmake \
+    cryptopp spdlog nlohmann-json
+  
 
+##################################
 # Windows（推荐使用vcpkg）
+##################################
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-.\vcpkg install wxwidgets cryptopp spdlog nlohmann-json
+.\vcpkg install cryptopp spdlog nlohmann-json
 ```
 
 ### 🚀 一键构建命令
@@ -128,7 +159,7 @@ cmake --build . --config Release -j8
 
 # 4. 运行应用程序
 ./CryptoToysPP  # Linux/macOS
-.\Release\CryptoToysPP.exe  # Windows
+.\CryptoToysPP.exe  # Windows
 ```
 
 ## 🔍 项目结构全景

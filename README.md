@@ -95,22 +95,51 @@ flowchart TD
 ### 🔧 System Dependency Installation
 
 ```bash
-# Ubuntu/Debian (Ubuntu 22.04+ recommended)
-sudo apt update && sudo apt install -y \
-  build-essential cmake \
-  libwxgtk-webview3.2-dev \
-  libcrypto++-dev
+##################################
+# Ubuntu (Recommended: Ubuntu 22.04+)
+##################################
+sudo apt update
+# Install core dependencies
+sudo apt install -y \
+    build-essential \
+    pkg-config \
+    libgtk-3-dev \
+    libwebkit2gtk-4.0-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libsoup2.4-dev
+# Recommended: Install remaining dependencies via vcpkg
+cd ~ && git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+# Configure vcpkg environment variables
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.bashrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.bashrc
+source ~/.bashrc
+# For zsh users: apply equivalent configuration
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.zshrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.zshrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.zshrc
+source ~/.zshrc
+# Enable Release configuration to bypass Debug builds and accelerate compilation
+echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-linux.cmake
+# Globally substitute HTTPS with SSH if encountering network restrictions
+git config --global url."git@github.com:".insteadOf "https://github.com/"
 
-# macOS (Homebrew recommended)
-brew update && brew install \
-  cmake wxwidgets \
-  cryptopp spdlog nlohmann-json
-
-# Windows (vcpkg recommended)
+##################################
+# macOS (Recommended: Homebrew)
+##################################
+brew update && brew install cmake \
+    cryptopp spdlog nlohmann-json
+  
+##################################
+# Windows (Recommended: vcpkg)
+##################################
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-.\vcpkg install wxwidgets cryptopp spdlog nlohmann-json
+.\vcpkg install cryptopp spdlog nlohmann-json
 ```
 
 ### 🚀 One-Command Build
