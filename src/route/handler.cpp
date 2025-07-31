@@ -37,14 +37,21 @@ namespace CryptoToysPP::Route {
     }
 
     wxFSFile *SchemeHandler::GetFile(const wxString &uri) {
-        const std::string uriStr = uri.ToStdString();
-        spdlog::debug("Processing resource request: {}", uriStr);
+        constexpr std::string_view APP_PREFIX = "app://index.html/";
+        std::string uriConvert = uri.ToStdString();
+        if (uriConvert.starts_with("app://index.html/")) {
+            uriConvert.replace(0, APP_PREFIX.size(), "app://");
+        }
+        while (uriConvert.back() == '/') {
+            uriConvert.pop_back();
+        }
+        spdlog::debug("Processing resource request: {}", uriConvert);
 
         try {
             // Security validation of resource path
-            ValidationResult pathResult = ValidateResourcePath(uri);
+            ValidationResult pathResult = ValidateResourcePath(uriConvert);
             if (!pathResult.valid) {
-                spdlog::error("Path validation failed: {} - {}", uriStr,
+                spdlog::error("Path validation failed: {} - {}", uriConvert,
                               pathResult.message);
                 return nullptr;
             }
@@ -73,11 +80,11 @@ namespace CryptoToysPP::Route {
             return CreateSecureMemoryStream(resourceKey, descriptor);
 
         } catch (const std::exception &e) {
-            spdlog::error("Resource handling exception: {} - {}", uriStr,
+            spdlog::error("Resource handling exception: {} - {}", uriConvert,
                           e.what());
         } catch (...) {
             spdlog::error("Unknown exception during resource handling: {}",
-                          uriStr);
+                          uriConvert);
         }
         return nullptr;
     }
@@ -219,7 +226,7 @@ namespace CryptoToysPP::Route {
 
         // Match file extension
         for (const auto &[ext, mime] : mimeMap) {
-            if (path.find(ext) != std::string::npos) {
+            if (path.ends_with(ext)) {
                 return mime;
             }
         }
