@@ -99,10 +99,14 @@ namespace CryptoToysPP::Gui {
     }
 
     void MainFrame::OnScriptMessage(wxWebViewEvent &evt) {
+#ifdef __linux__
+        spdlog::debug("Processing CryptoToysPP message");
+#else
         if (evt.GetMessageHandler() != "CryptoToysPP")
             return;
-
         spdlog::debug("Processing CryptoToysPP message");
+#endif
+
         std::string requestId;
 
         try {
