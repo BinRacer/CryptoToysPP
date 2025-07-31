@@ -1,32 +1,24 @@
 <div align="center">
+  <!-- Banner with negative bottom margin -->
+  <a href="https://github.com/BinRacer/CryptoToysPP">
+    <img src="images/banner.zh-CN.svg" alt="CryptoToysPP" style="width:100%; max-width:100%; margin-top:0; margin-bottom:-0.5rem">
+  </a>
 
-<h1>
-  <span style="display: inline-block; background: linear-gradient(135deg, #4361ee, #7209b7); 
-             -webkit-background-clip: text; background-clip: text; color: transparent;
-             font-size: 3.5rem; font-weight: 800;">
-    CryptoToysPP
-  </span>
-  <span style="font-size: 2.8rem; color: #4361ee; vertical-align: middle;">✨</span>
-</h1>
+  <!-- Main badges directly attached -->
+  <div style="margin-top:-3rem; line-height:1; padding:0">
+    <img src="https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-blue" alt="Cross-platform Support">
+    <img src="https://img.shields.io/badge/C++-20-purple" alt="C++20">
+    <img src="https://img.shields.io/badge/wxWidgets-3.3-purple" alt="wxWidgets">
+    <img src="https://img.shields.io/badge/Crypto++-8.9-purple" alt="Crypto++">
+    <img src="https://img.shields.io/badge/Vue-3.5-purple" alt="Vue">
+    <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+  </div>
 
-<p style="font-size: 1.2rem; margin-top: 0.5rem; color: #6c757d;">
-  Comprehensive Encoding Conversion, Encryption, and Hashing Solutions
-</p>
-
-<div style="margin: 1.5rem 0;">
-  <img src="https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-blue" alt="Cross-platform Support">
-  <img src="https://img.shields.io/badge/C++-20-purple" alt="C++20">
-  <img src="https://img.shields.io/badge/wxWidgets-3.3-purple" alt="wxWidgets">
-  <img src="https://img.shields.io/badge/Crypto++-8.9-purple" alt="Crypto++">
-  <img src="https://img.shields.io/badge/Vue-3.5-purple" alt="Vue">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
-</div>
-
-<div>
-  <img src="https://img.shields.io/github/stars/BinRacer/CryptoToysPP?style=social" alt="GitHub stars">
-  <img src="https://img.shields.io/github/forks/BinRacer/CryptoToysPP?style=social" alt="GitHub forks">
-</div>
-
+  <!-- Social badges -->
+  <div style="margin-top:0.2rem">
+    <img src="https://img.shields.io/github/stars/BinRacer/CryptoToysPP?style=social" alt="GitHub stars">
+    <img src="https://img.shields.io/github/forks/BinRacer/CryptoToysPP?style=social" alt="GitHub forks">
+  </div>
 </div>
 <div align="center">
 
@@ -50,7 +42,7 @@ CryptoToysPP 是**高性能现代密码学工具套件**，采用：
 
 <div style="text-align: center; margin: 2rem 0;">
   <p><em>CryptoToysPP 现代美学界面设计</em></p>
-  <img src="images/welcome.zh_CN.png" 
+  <img src="images/welcome.zh-CN.png" 
        alt="CryptoToysPP界面预览" 
        style="border-radius: 12px; 
               box-shadow: 0 4px 20px rgba(0,0,0,0.1);
