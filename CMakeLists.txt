@@ -1,9 +1,7 @@
 # =====================================================================================
 # CryptoToysPP CMake Configuration
-#   - C++20 support
-#   - Cross-platform dependency management
-#   - Custom runtime dependency handling
-#   - Pre-build resource generation
+#   - Fixes wxWebView on Linux (Ubuntu 22.04)
+#   - Maintains Windows/macOS compatibility
 # =====================================================================================
 cmake_minimum_required(VERSION 3.30)
 project(CryptoToysPP)
@@ -97,7 +95,7 @@ else()
 
     set(wxBUILD_OPTIONS
             "--disable-all"     # Minimal components
-            "--enable-webview"  # WebView support
+            "--enable-webview"  # Ensure WebView enabled
             "--enable-unicode"  # Unicode encoding
     )
 
@@ -108,6 +106,11 @@ else()
         list(APPEND wxBUILD_OPTIONS "--with-osx_cocoa")
     else()
         list(APPEND wxBUILD_OPTIONS "--with-gtk=3")
+        # FIX: Explicit WebKit dependency for Linux webview
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
+        list(APPEND wxBUILD_OPTIONS "--with-webkit=system")
+        message(STATUS "Enabled WebKit system integration for wxWebView")
     endif()
 
     FetchContent_Declare(
@@ -118,6 +121,7 @@ else()
             -DwxBUILD_SHARED=${wxBUILD_SHARED}
             -DwxBUILD_MONOLITHIC=${wxBUILD_MONOLITHIC}
             -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
+            -DwxUSE_WEBVIEW=ON
     )
 
     FetchContent_MakeAvailable(wxWidgets)

@@ -25,7 +25,7 @@ def copy_build_output(source_dir, build_type):
     """
     # Determine project root (script directory parent)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    target_dir = os.path.join(project_root, "build", build_type)
+    target_dir = os.path.join(project_root, "dist", build_type)
 
     print(f"[INFO] Project root: {project_root}")
     print(f"[INFO] Source directory: {source_dir}")
