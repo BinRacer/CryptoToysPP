@@ -155,8 +155,8 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . --config Release -j8
 
 # 4. Run application
-./CryptoToysPP  # Linux/macOS
-.\Release\CryptoToysPP.exe  # Windows
+./CryptoToysPP      # Linux/macOS
+.\CryptoToysPP.exe  # Windows
 ```
 
 ## 🔍 Project Structure Overview
