@@ -1,35 +1,37 @@
-<h1 style="text-align: center; font-size: 3.5rem; font-weight: 800; margin: 0;
-             display: flex; align-items: center; justify-content: center; gap: 16px;">
-    <span style="background: linear-gradient(135deg, #4361ee, #7209b7); 
-               -webkit-background-clip: text; background-clip: text; color: transparent;">
-      CryptoToysPP
-    </span>
-    <span style="font-size: 2.8rem; color: #4361ee;">✨</span>
+<div align="center">
+
+<h1>
+  <span style="display: inline-block; background: linear-gradient(135deg, #4361ee, #7209b7); 
+             -webkit-background-clip: text; background-clip: text; color: transparent;
+             font-size: 3.5rem; font-weight: 800;">
+    CryptoToysPP
+  </span>
+  <span style="font-size: 2.8rem; color: #4361ee; vertical-align: middle;">✨</span>
 </h1>
 
-<div style="text-align: center;">
-  <p style="font-size: 1.2rem; margin-top: 0.5rem; color: #6c757d;">
-    全面的编码转换、加密与哈希解决方案
-  </p>
+<p style="font-size: 1.2rem; margin-top: 0.5rem; color: #6c757d;">
+  Comprehensive Encoding Conversion, Encryption, and Hashing Solutions
+</p>
 
-  <div style="margin: 1.5rem 0;">
-    <img src="https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-blue" alt="跨平台支持">
-    <img src="https://img.shields.io/badge/C++-20-purple" alt="C++20">
-    <img src="https://img.shields.io/badge/wxWidgets-3.3-purple" alt="wxWidgets">
-    <img src="https://img.shields.io/badge/Crypto++-8.9-purple" alt="Crypto++">
-    <img src="https://img.shields.io/badge/Vue-3.5-purple" alt="Vue">
-    <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT许可">
-  </div>
+<div style="margin: 1.5rem 0;">
+  <img src="https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-blue" alt="Cross-platform Support">
+  <img src="https://img.shields.io/badge/C++-20-purple" alt="C++20">
+  <img src="https://img.shields.io/badge/wxWidgets-3.3-purple" alt="wxWidgets">
+  <img src="https://img.shields.io/badge/Crypto++-8.9-purple" alt="Crypto++">
+  <img src="https://img.shields.io/badge/Vue-3.5-purple" alt="Vue">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+</div>
 
-  <div>
-    <img src="https://img.shields.io/github/stars/BinRacer/CryptoToysPP?style=social" alt="GitHub stars">
-    <img src="https://img.shields.io/github/forks/BinRacer/CryptoToysPP?style=social" alt="GitHub forks">
-  </div>
-  <div style="text-align: center">
+<div>
+  <img src="https://img.shields.io/github/stars/BinRacer/CryptoToysPP?style=social" alt="GitHub stars">
+  <img src="https://img.shields.io/github/forks/BinRacer/CryptoToysPP?style=social" alt="GitHub forks">
+</div>
 
-  [English](./README.md) | 简体中文
+</div>
+<div align="center">
 
-  </div>
+[English](./README.md) | 简体中文
+
 </div>
 
 ---
