@@ -13,12 +13,6 @@
     <img src="https://img.shields.io/badge/Vue-3.5-purple" alt="Vue">
     <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
   </div>
-
-  <!-- Social badges -->
-  <div style="margin-top:0.2rem">
-    <img src="https://img.shields.io/github/stars/BinRacer/CryptoToysPP?style=social" alt="GitHub stars">
-    <img src="https://img.shields.io/github/forks/BinRacer/CryptoToysPP?style=social" alt="GitHub forks">
-  </div>
 </div>
 
 <div align="center">
