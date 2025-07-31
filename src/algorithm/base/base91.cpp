@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base91.h"
+#include "base91.h"
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base91::Encode(const std::vector<uint8_t> &data) {
         constexpr uint8_t BASE91_CHARS[] =

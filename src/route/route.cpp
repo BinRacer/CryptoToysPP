@@ -26,11 +26,11 @@
  */
 /* clang-format on */
 #include "route.h"
-#include "algorithm/base/Base16.h"
-#include "algorithm/base/Base32.h"
-#include "algorithm/base/Base58.h"
-#include "algorithm/base/Base62.h"
-#include "algorithm/base/Base64.h"
+#include "algorithm/base/base16.h"
+#include "algorithm/base/base32.h"
+#include "algorithm/base/base58.h"
+#include "algorithm/base/base62.h"
+#include "algorithm/base/base64.h"
 #include "algorithm/base/base85.h"
 #include "algorithm/base/base91.h"
 #include "algorithm/base/base92.h"

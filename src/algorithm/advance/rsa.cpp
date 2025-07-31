@@ -32,6 +32,8 @@
 #include <cryptopp/osrng.h>
 #include <cryptopp/rsa.h>
 #include <spdlog/spdlog.h>
+#include <iomanip>
+#include <sstream>
 #include <algorithm>
 #include <ranges>
 namespace CryptoToysPP::Algorithm::Advance {

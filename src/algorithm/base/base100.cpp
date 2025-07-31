@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base100.h"
+#include "base100.h"
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base100::Encode(const std::vector<uint8_t> &data) {
         if (data.empty())

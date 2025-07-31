@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base62.h"
+#include "base62.h"
 #include <algorithm>
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base62::Encode(const std::vector<uint8_t> &data) {

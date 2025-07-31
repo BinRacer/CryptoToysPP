@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base85.h"
+#include "base85.h"
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base85::Encode(const std::vector<uint8_t> &data) {
         constexpr uint8_t BASE85_CHARS[] = "!\"#$%&'()*+,-./0123456789:;<=>?@"

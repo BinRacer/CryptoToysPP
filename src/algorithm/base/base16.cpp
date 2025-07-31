@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base16.h"
+#include "base16.h"
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base16::Encode(const std::vector<uint8_t> &data) {
         constexpr uint8_t BASE16_CHARS[] = "0123456789ABCDEF";

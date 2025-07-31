@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Vigenere.h"
+#include "vigenere.h"
 namespace CryptoToysPP::Algorithm::Simple {
     std::vector<uint8_t> Vigenere::Encode(const std::vector<uint8_t> &data,
                                           const std::vector<uint8_t> &key) {

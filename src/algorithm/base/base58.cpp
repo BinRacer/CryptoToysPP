@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base58.h"
+#include "base58.h"
 #include <ranges>
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base58::Encode(const std::vector<uint8_t> &data) {

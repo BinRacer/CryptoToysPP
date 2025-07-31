@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 /* clang-format on */
-#include "Base32.h"
+#include "base32.h"
 namespace CryptoToysPP::Algorithm::Base {
     std::vector<uint8_t> Base32::Encode(const std::vector<uint8_t> &data) {
         constexpr uint8_t BASE32_CHARS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

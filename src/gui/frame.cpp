@@ -27,7 +27,7 @@
 /* clang-format on */
 #include "frame.h"
 #include "route/handler.h"
-#include "algorithm/base/Base64.h"
+#include "algorithm/base/base64.h"
 #include <spdlog/spdlog.h>
 namespace CryptoToysPP::Gui {
     MainFrame::MainFrame() :
