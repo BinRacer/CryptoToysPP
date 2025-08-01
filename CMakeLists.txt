@@ -65,7 +65,7 @@ add_custom_target(generate_resources ALL
 )
 
 # ─── wxWidgets Configuration ──────────────────────────────────────────────────
-find_package(wxWidgets 3.4 CONFIG QUIET)
+find_package(wxWidgets 3.3 CONFIG QUIET)
 
 if(wxWidgets_FOUND AND TARGET wx::webview)
     message(STATUS "Using system-installed wxWidgets with wx::webview target")
