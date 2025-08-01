@@ -1,7 +1,7 @@
 # =====================================================================================
-# CryptoToysPP CMake Configuration
-#   - Fixes wxWebView on Linux (Ubuntu 22.04)
-#   - Maintains Windows/macOS compatibility
+# CryptoToysPP CMake Configuration (Optimized)
+#   - Only copies executables and dependencies to dist directory
+#   - Full cross-platform support
 # =====================================================================================
 cmake_minimum_required(VERSION 3.30)
 project(CryptoToysPP)
@@ -41,76 +41,65 @@ find_package(spdlog 1.15 CONFIG REQUIRED)
 # ─── Python Build Helpers ──────────────────────────────────────────────────────
 find_package(Python COMPONENTS Interpreter REQUIRED)
 
-# ─── Resource Generation (Pre-Build) ───────────────────────────────────────────
+# ─── Resource Generation ──────────────────────────────────────────────────────
 set(GENERATE_RESOURCES_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/generate_resources.py")
-
-# Verify script existence
-if(NOT EXISTS ${GENERATE_RESOURCES_SCRIPT})
-    message(FATAL_ERROR "Resource generation script not found: ${GENERATE_RESOURCES_SCRIPT}")
-endif()
-
-# Configure resource output directory
 set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/src/resources")
 set(RESOURCE_HEADER "${RESOURCES_DIR}/resources.h")
 set(RESOURCE_SOURCE "${RESOURCES_DIR}/resources.cpp")
 
-# Add pre-build custom command for resource generation
+if(NOT EXISTS ${GENERATE_RESOURCES_SCRIPT})
+    message(FATAL_ERROR "Resource generation script not found: ${GENERATE_RESOURCES_SCRIPT}")
+endif()
+
 add_custom_command(
         OUTPUT ${RESOURCE_HEADER} ${RESOURCE_SOURCE}
         COMMAND ${Python_EXECUTABLE} ${GENERATE_RESOURCES_SCRIPT}
         DEPENDS ${GENERATE_RESOURCES_SCRIPT}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Generating resource files: ${RESOURCE_HEADER} and ${RESOURCE_SOURCE}"
+        COMMENT "Generating resource files"
         VERBATIM
 )
 
-# Create virtual target to ensure resource generation
 add_custom_target(generate_resources ALL
         DEPENDS ${RESOURCE_HEADER} ${RESOURCE_SOURCE}
 )
 
-# ─── wxWidgets Configuration ───────────────────────────────────────────────────
-set(wxBUILD_SHARED ON CACHE BOOL "Shared library build")
-set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Monolithic build disabled")
+# ─── wxWidgets Configuration ──────────────────────────────────────────────────
+find_package(wxWidgets 3.4 CONFIG QUIET)
 
-find_package(wxWidgets 3.3 COMPONENTS webview QUIET)
-if(wxWidgets_FOUND)
-    message(STATUS "Using system-installed wxWidgets ${wxWidgets_VERSION}")
+if(wxWidgets_FOUND AND TARGET wx::webview)
+    message(STATUS "Using system-installed wxWidgets with wx::webview target")
     set(WXWEBVIEW_TARGET wx::webview)
-
-    # Determine library directory (Windows/macOS)
-    if(WIN32 OR APPLE)
-        get_target_property(_wx_lib_dir wx::base LIBRARY_OUTPUT_DIRECTORY)
-        if(_wx_lib_dir AND EXISTS "${_wx_lib_dir}")
-            set(wx_runtime_dir "${_wx_lib_dir}")
-            message(STATUS "Detected wxWidgets library dir: ${wx_runtime_dir}")
-        else()
-            message(STATUS "Using default wxWidgets runtime location")
-            set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
-        endif()
-    endif()
+    set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 else()
-    message(STATUS "Building wxWidgets from source")
+    if(wxWidgets_FOUND)
+        message(STATUS "wxWidgets found but missing webview component, building from source")
+    else()
+        message(STATUS "wxWidgets not found, building from source with webview")
+    endif()
+
     include(FetchContent)
 
+    # Configure build options
+    set(wxBUILD_SHARED ON CACHE BOOL "Shared library build")
+    set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Disable monolithic build")
+
     set(wxBUILD_OPTIONS
-            "--disable-all"     # Minimal components
-            "--enable-webview"  # Ensure WebView enabled
-            "--enable-unicode"  # Unicode encoding
+            "--disable-all"
+            "--enable-webview"
+            "--enable-unicode"
     )
 
-    # Platform-specific build options
+    # Platform-specific options
     if(WIN32)
         list(APPEND wxBUILD_OPTIONS "--with-msw")
     elseif(APPLE)
         list(APPEND wxBUILD_OPTIONS "--with-osx_cocoa")
     else()
         list(APPEND wxBUILD_OPTIONS "--with-gtk=3")
-        # FIX: Explicit WebKit dependency for Linux webview
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
         list(APPEND wxBUILD_OPTIONS "--with-webkit=system")
-        message(STATUS "Enabled WebKit system integration for wxWebView")
     endif()
 
     FetchContent_Declare(
@@ -125,68 +114,49 @@ else()
     )
 
     FetchContent_MakeAvailable(wxWidgets)
-    set(WXWEBVIEW_TARGET wx::webview)
-    set(wx_runtime_dir "$<TARGET_FILE_DIR:wx::core>")
-endif()
 
-# ─── Runtime Directory Handling ────────────────────────────────────────────────
-if(NOT DEFINED wx_runtime_dir)
-    if(WIN32)
-        set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
-    elseif(APPLE)
-        set(wx_runtime_dir "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Frameworks")
-        set(CMAKE_MACOSX_RPATH ON)
+    if(TARGET wx::webview)
+        set(WXWEBVIEW_TARGET wx::webview)
+        set(wx_runtime_dir "$<TARGET_FILE_DIR:wx::webview>")
     else()
-        set(wx_runtime_dir "${CMAKE_INSTALL_PREFIX}/lib")
+        message(FATAL_ERROR "Failed to build wxWebView component from source")
     endif()
 endif()
 
-# ─── Source Collection ─────────────────────────────────────────────────────────
-include_directories(${CMAKE_SOURCE_DIR}/src ${RESOURCES_DIR})
+# Fallback for runtime directory
+if(NOT DEFINED wx_runtime_dir)
+    set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+endif()
 
-message(STATUS "Collecting source files from: ${CMAKE_SOURCE_DIR}/src")
+# ─── Source Collection ────────────────────────────────────────────────────────
+include_directories(${CMAKE_SOURCE_DIR}/src ${RESOURCES_DIR})
 file(GLOB_RECURSE SOURCE_FILES
-        "${CMAKE_SOURCE_DIR}/src/*.h"
-        "${CMAKE_SOURCE_DIR}/src/*.hpp"
-        "${CMAKE_SOURCE_DIR}/src/*.hxx"
-        "${CMAKE_SOURCE_DIR}/src/*.hh"
-        "${CMAKE_SOURCE_DIR}/src/*.c"
-        "${CMAKE_SOURCE_DIR}/src/*.cpp"
-        "${CMAKE_SOURCE_DIR}/src/*.cxx"
-        "${CMAKE_SOURCE_DIR}/src/*.cc"
+        "${CMAKE_SOURCE_DIR}/src/*.h*"
+        "${CMAKE_SOURCE_DIR}/src/*.c*"
 )
 
-# ─── Windows Application Icon ────────────────────────────────────────────────
+# Platform-specific resources
 if(WIN32)
-    # Verify icon resource existence
     set(APP_ICON_RC "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.rc")
     set(APP_ICO_FILE "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.ico")
 
     if(EXISTS ${APP_ICON_RC} AND EXISTS ${APP_ICO_FILE})
-        # Add resource file to source collection
         list(APPEND SOURCE_FILES ${APP_ICON_RC})
-        message(STATUS "Added Windows icon resource file: ${APP_ICON_RC}")
-
-        # Copy icon file to build directory (required for resource compilation)
         configure_file(${APP_ICO_FILE} ${CMAKE_CURRENT_BINARY_DIR}/CryptoToysPP.windows.ico COPYONLY)
+        message(STATUS "Added Windows icon resources")
     else()
         message(WARNING "Missing Windows icon files in icons directory")
     endif()
 endif()
 
-# Add generated resources to source collection
-list(APPEND SOURCE_FILES
-        ${RESOURCE_HEADER}
-        ${RESOURCE_SOURCE}
-)
+# Add generated resources
+list(APPEND SOURCE_FILES ${RESOURCE_HEADER} ${RESOURCE_SOURCE})
 
-# ─── Executable Target ─────────────────────────────────────────────────────────
+# ─── Executable Target ────────────────────────────────────────────────────────
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
-
-# Ensure resource generation completes before build
 add_dependencies(${PROJECT_NAME} generate_resources)
 
-# Windows-specific configuration
+# Platform-specific executable config
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
             WIN32_EXECUTABLE TRUE
@@ -194,7 +164,7 @@ if(WIN32)
     )
 endif()
 
-# ─── Dependency Linking ────────────────────────────────────────────────────────
+# ─── Dependency Linking ───────────────────────────────────────────────────────
 target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json
         cryptopp::cryptopp
@@ -202,57 +172,92 @@ target_link_libraries(${PROJECT_NAME}
         ${WXWEBVIEW_TARGET}
 )
 
-# ─── Runtime File Copying ──────────────────────────────────────────────────────
-if(WIN32 AND wxBUILD_SHARED)
-    if(TARGET cryptopp::cryptopp)
+# ─── Post-Build Operations ─────────────────────────────────────────────────────
+# Unified runtime handling for all platforms
+set(RUNTIME_TARGETS)
+if(TARGET cryptopp::cryptopp)
+    list(APPEND RUNTIME_TARGETS cryptopp::cryptopp)
+endif()
+if(TARGET spdlog::spdlogshared)
+    list(APPEND RUNTIME_TARGETS spdlog::spdlogshared)
+endif()
+if(TARGET ${WXWEBVIEW_TARGET})
+    list(APPEND RUNTIME_TARGETS ${WXWEBVIEW_TARGET})
+endif()
+
+if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
+    # Create destination directory
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMENT "Preparing runtime environment"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+    )
+
+    # Copy all runtime libraries
+    foreach(target IN LISTS RUNTIME_TARGETS)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Copying Crypto++ DLL"
+                COMMENT "Copying ${target} runtime files"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:cryptopp::cryptopp>"
+                "$<TARGET_FILE:${target}>"
                 "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-                VERBATIM
+        )
+
+        # For macOS, handle framework dependencies
+        if(APPLE AND TARGET ${target})
+            get_target_property(target_type ${target} TYPE)
+            if(target_type STREQUAL "SHARED_LIBRARY")
+                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                        COMMAND ${CMAKE_INSTALL_NAME_TOOL} -change
+                        "$<TARGET_SONAME_FILE:${target}>"
+                        "@executable_path/$<TARGET_FILE_NAME:${target}>"
+                        "$<TARGET_FILE:${PROJECT_NAME}>"
+                )
+            endif()
+        endif()
+    endforeach()
+
+    # Handle wxWidgets runtime directories (for all platforms)
+    if(DEFINED wx_runtime_dir)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMENT "Copying wxWidgets runtime files"
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${wx_runtime_dir}"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         )
     endif()
+endif()
 
+# macOS specific bundle handling
+if(APPLE)
+    # Copy wxWidgets frameworks if built from source
+    if(DEFINED wx_runtime_dir AND NOT wxWidgets_FOUND)
+        set_source_files_properties("${wx_runtime_dir}" PROPERTIES MACOSX_PACKAGE_LOCATION Frameworks)
+    endif()
+endif()
+
+# Linux specific - update linker paths
+if(LINUX)
     if(TARGET spdlog::spdlogshared)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Copying spdlog DLL"
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:spdlog::spdlogshared>"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-                VERBATIM
+                COMMENT "Updating Linux linker paths"
+                COMMAND sh -c "patchelf --set-rpath \\$ORIGIN:$ORIGIN/../lib $<TARGET_FILE:${PROJECT_NAME}>"
         )
     endif()
+endif()
 
+# Build output copying to dist directory
+set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
+
+if(EXISTS ${COPY_SCRIPT_PATH})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMENT "Copying wxWidgets runtime files"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${wx_runtime_dir}"
+            COMMENT "Copying build output to dist directory"
+            COMMAND "${Python_EXECUTABLE}" "${COPY_SCRIPT_PATH}"
             "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            "$<IF:$<CONFIG:>,Release,$<CONFIG>>"
             VERBATIM
     )
 endif()
 
-# ─── Build Output Copying ──────────────────────────────────────────────────────
-# Identify current build configuration
-if(CMAKE_BUILD_TYPE)
-    set(CURRENT_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-else()
-    set(CURRENT_BUILD_TYPE $<CONFIG>)
-endif()
-
-set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMENT "Copying build output to project directory"
-        COMMAND "${Python_EXECUTABLE}" "${COPY_SCRIPT_PATH}"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        "${CURRENT_BUILD_TYPE}"
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-        VERBATIM
-)
-
-# ─── Installation Target ───────────────────────────────────────────────────────
+# ─── Installation Target ──────────────────────────────────────────────────────
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION bin
         BUNDLE DESTINATION .

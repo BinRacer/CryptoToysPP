@@ -1,97 +1,111 @@
-"""
-Build Output Copier
-===================
-Copies build artifacts to project build directory
-with structure:
-  build/
-    ├── Debug/
-    └── Release/
-"""
-
+#!/usr/bin/env python3
+# ==============================================================================
+# CryptoToysPP Build Output Copier (Optimized)
+#   - Only copies executables and dependencies to dist directory
+#   - Cross-platform support
+#   - Clears target directory before copying in both Debug and Release modes
+# ==============================================================================
 import os
-import shutil
 import sys
+import shutil
 import platform
 import argparse
-import glob
+import logging
+from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(levelname)s] %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger('build_copier')
 
 def copy_build_output(source_dir, build_type):
     """
-    Copy build artifacts to project build directory
+    Copy build artifacts to dist directory
 
     Args:
         source_dir: Path to build output directory
         build_type: Build configuration (Debug/Release)
     """
-    # Determine project root (script directory parent)
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    target_dir = os.path.join(project_root, "dist", build_type)
+    try:
+        # Determine project root (script directory parent)
+        script_dir = Path(__file__).resolve().parent
+        project_root = script_dir.parent
+        target_dir = project_root / "dist" / build_type
 
-    print(f"[INFO] Project root: {project_root}")
-    print(f"[INFO] Source directory: {source_dir}")
-    print(f"[INFO] Target directory: {target_dir}")
+        logger.info(f"Project root: {project_root}")
+        logger.info(f"Source directory: {source_dir}")
+        logger.info(f"Target directory: {target_dir}")
 
-    # Ensure target directory exists
-    os.makedirs(target_dir, exist_ok=True)
+        # Clear target directory for both Debug and Release modes
+        if target_dir.exists():
+            logger.info(f"Clearing target directory for {build_type} build: {target_dir}")
+            shutil.rmtree(target_dir)
 
-    # Platform-specific executable name
-    executable_name = "CryptoToysPP"
-    if platform.system() == "Windows":
-        executable_name += ".exe"
+        # Ensure target directory exists
+        target_dir.mkdir(parents=True, exist_ok=True)
 
-    # Copy executable
-    source_exe = os.path.join(source_dir, executable_name)
-    target_exe = os.path.join(target_dir, executable_name)
+        # Platform-specific executable name
+        executable_name = "CryptoToysPP"
+        if platform.system() == "Windows":
+            executable_name += ".exe"
 
-    if os.path.exists(source_exe):
-        print(f"[COPY] Executable: {source_exe} → {target_exe}")
-        shutil.copy2(source_exe, target_exe)
-    else:
-        print(f"[WARNING] Missing executable: {source_exe}")
+        # Copy executable
+        source_exe = Path(source_dir) / executable_name
+        target_exe = target_dir / executable_name
 
-    # Platform-specific dependencies
-    if platform.system() == "Windows":
+        if source_exe.exists():
+            logger.info(f"Copying executable: {source_exe} → {target_exe}")
+            shutil.copy2(source_exe, target_exe)
+        else:
+            logger.warning(f"Missing executable: {source_exe}")
+
+        # Copy all platform-specific dependencies
+        copy_platform_dependencies(source_dir, target_dir)
+
+        logger.info(f"Successfully copied artifacts to dist/{build_type}")
+        return True
+    except Exception as e:
+        logger.error(f"Operation failed: {str(e)}")
+        return False
+
+def copy_platform_dependencies(source_dir, target_dir):
+    """Copy platform-specific dependencies"""
+    system = platform.system()
+    source_path = Path(source_dir)
+
+    if system == "Windows":
         # Copy all DLL files
-        dll_files = glob.glob(os.path.join(source_dir, "*.dll"))
-        for dll in dll_files:
-            target_dll = os.path.join(target_dir, os.path.basename(dll))
-            print(f"[COPY] DLL: {dll} → {target_dll}")
+        for dll in source_path.glob("*.dll"):
+            target_dll = target_dir / dll.name
+            logger.info(f"Copying DLL: {dll} → {target_dll}")
             shutil.copy2(dll, target_dll)
 
-    elif platform.system() == "Darwin":
+    elif system == "Darwin":
         # Copy dynamic libraries
-        dylib_files = glob.glob(os.path.join(source_dir, "*.dylib"))
-        for dylib in dylib_files:
-            target_dll = os.path.join(target_dir, os.path.basename(dylib))
-            print(f"[COPY] dylib: {dylib} → {target_dll}")
-            shutil.copy2(dylib, target_dll)
+        for dylib in source_path.glob("*.dylib"):
+            target_dylib = target_dir / dylib.name
+            logger.info(f"Copying dylib: {dylib} → {target_dylib}")
+            shutil.copy2(dylib, target_dylib)
 
         # Copy frameworks
-        frameworks = glob.glob(os.path.join(source_dir, "*.framework"))
-        for framework in frameworks:
-            framework_name = os.path.basename(framework)
-            target_framework = os.path.join(target_dir, framework_name)
+        for framework in source_path.glob("*.framework"):
+            target_framework = target_dir / framework.name
+            logger.info(f"Copying framework: {framework} → {target_framework}")
+            shutil.copytree(framework, target_framework, dirs_exist_ok=True)
 
-            # Remove existing framework directory
-            if os.path.exists(target_framework):
-                shutil.rmtree(target_framework)
+    elif system == "Linux":
+        # Copy shared libraries (.so files)
+        for so_file in source_path.glob("*.so*"):
+            target_so = target_dir / so_file.name
+            logger.info(f"Copying shared library: {so_file} → {target_so}")
+            shutil.copy2(so_file, target_so)
 
-            print(f"[COPY] Framework: {framework} → {target_framework}")
-            shutil.copytree(framework, target_framework)
-
-    # Copy configuration files
-    config_patterns = ("*.ini", "*.conf", "*.cfg")
-    for pattern in config_patterns:
-        for config in glob.glob(os.path.join(source_dir, pattern)):
-            target_config = os.path.join(target_dir, os.path.basename(config))
-            print(f"[COPY] Config: {config} → {target_config}")
-            shutil.copy2(config, target_config)
-
-    print(f"[SUCCESS] Copied artifacts to build/{build_type}")
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
-        description="Copy build output to project build directory",
+        description="CryptoToysPP Build Output Copier - Copies executables and dependencies",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
@@ -110,12 +124,12 @@ if __name__ == "__main__":
 
     # Validate source directory
     if not os.path.exists(args.source_dir):
-        print(f"[ERROR] Invalid source directory: {args.source_dir}")
+        logger.error(f"Invalid source directory: {args.source_dir}")
         sys.exit(1)
 
     # Execute copy operation
-    try:
-        copy_build_output(args.source_dir, args.build_type)
-    except Exception as e:
-        print(f"[ERROR] Operation failed: {str(e)}")
-        sys.exit(1)
+    success = copy_build_output(args.source_dir, args.build_type)
+    sys.exit(0 if success else 1)
+
+if __name__ == "__main__":
+    main()
