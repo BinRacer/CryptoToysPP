@@ -99,7 +99,7 @@ flowchart TD
 # Ubuntu (Recommended: Ubuntu 22.04+)
 ##################################
 sudo apt update
-# Install core dependencies
+# Install basic dependencies
 sudo apt install -y \
     build-essential \
     pkg-config \
@@ -108,38 +108,62 @@ sudo apt install -y \
     libgl1-mesa-dev \
     libglu1-mesa-dev \
     libsoup2.4-dev
-# Recommended: Install remaining dependencies via vcpkg
+# Install other dependencies via vcpkg (recommended)
 cd ~ && git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 ./bootstrap-vcpkg.sh
-# Configure vcpkg environment variables
+# Set vcpkg environment variables
 echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
 echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.bashrc
 echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.bashrc
 source ~/.bashrc
-# For zsh users: apply equivalent configuration
+# Configure below for zsh users
 echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.zshrc
 echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.zshrc
 echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PATH"' >> ~/.zshrc
 source ~/.zshrc
-# Enable Release configuration to bypass Debug builds and accelerate compilation
+# Enable Release config to avoid Debug builds and optimize build time
 echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-linux.cmake
-# Globally substitute HTTPS with SSH if encountering network restrictions
+# Install dependencies: cryptopp spdlog nlohmann-json
+vcpkg install cryptopp spdlog nlohmann-json
+# Globally switch to SSH if HTTPS encounters networking constraints
 git config --global url."git@github.com:".insteadOf "https://github.com/"
 
+
 ##################################
-# macOS (Recommended: Homebrew)
+# macOS (Recommended: vcpkg)
 ##################################
-brew update && brew install cmake \
-    cryptopp spdlog nlohmann-json
+cd ~ && git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+# Set vcpkg environment variables
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.bashrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-osx:$CMAKE_PREFIX_PATH"' >> ~/.bashrc
+source ~/.bashrc
+# Configure below for zsh users
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.zshrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.zshrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-osx:$CMAKE_PREFIX_PATH"' >> ~/.zshrc
+source ~/.zshrc
+# Enable Release config to avoid Debug builds and optimize build time
+echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-osx.cmake
+# Install dependencies: cryptopp spdlog nlohmann-json
+vcpkg install cryptopp spdlog nlohmann-json
+# Globally switch to SSH if HTTPS encounters networking constraints
+git config --global url."git@github.com:".insteadOf "https://github.com/"
   
+
 ##################################
 # Windows (Recommended: vcpkg)
 ##################################
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-.\vcpkg install cryptopp spdlog nlohmann-json
+# Install dependencies: cryptopp spdlog nlohmann-json wxwidgets
+.\vcpkg install cryptopp spdlog nlohmann-json wxwidgets[webview]
+# Globally switch to SSH if HTTPS encounters networking constraints
+git config --global url."git@github.com:".insteadOf "https://github.com/"
 ```
 
 ### 🚀 One-Command Build

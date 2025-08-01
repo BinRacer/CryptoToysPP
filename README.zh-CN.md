@@ -125,15 +125,34 @@ echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-linux:$CMAKE_PREFIX_PA
 source ~/.zshrc
 # 启用 Release 配置，避免同时构建 Debug 版本，加速构建时间
 echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-linux.cmake
+# 开始安装 cryptopp spdlog nlohmann-json 依赖
+vcpkg install cryptopp spdlog nlohmann-json
 # 如果 https 网络受限，全局替换为 ssh
 git config --global url."git@github.com:".insteadOf "https://github.com/"
 
 
 ##################################
-# macOS（推荐使用Homebrew）
+# macOS（推荐使用 vcpkg）
 ##################################
-brew update && brew install cmake \
-    cryptopp spdlog nlohmann-json
+cd ~ && git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+./bootstrap-vcpkg.sh
+# 设置 vcpkg 相关环境变量
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.bashrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-osx:$CMAKE_PREFIX_PATH"' >> ~/.bashrc
+source ~/.bashrc
+# 使用 zsh 配置下面
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.zshrc
+echo 'export PATH="$VCPKG_ROOT:$PATH"' >> ~/.zshrc
+echo 'export CMAKE_PREFIX_PATH="$VCPKG_ROOT/installed/x64-osx:$CMAKE_PREFIX_PATH"' >> ~/.zshrc
+source ~/.zshrc
+# 启用 Release 配置，避免同时构建 Debug 版本，加速构建时间
+echo "set(VCPKG_BUILD_TYPE release)" >> ~/vcpkg/triplets/x64-osx.cmake
+# 开始安装 cryptopp spdlog nlohmann-json 依赖
+vcpkg install cryptopp spdlog nlohmann-json
+# 如果 https 网络受限，全局替换为 ssh
+git config --global url."git@github.com:".insteadOf "https://github.com/"
   
 
 ##################################
@@ -142,7 +161,10 @@ brew update && brew install cmake \
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-.\vcpkg install cryptopp spdlog nlohmann-json
+# 开始安装 cryptopp spdlog nlohmann-json wxwidgets 依赖
+.\vcpkg install cryptopp spdlog nlohmann-json wxwidgets[webview]
+# 如果 https 网络受限，全局替换为 ssh
+git config --global url."git@github.com:".insteadOf "https://github.com/"
 ```
 
 ### 🚀 一键构建命令
