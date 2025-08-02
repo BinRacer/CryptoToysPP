@@ -148,10 +148,6 @@ def copy_platform_dependencies(source_dir, target_dir, build_type):
     system = platform.system()
     source_path = Path(source_dir)
 
-    # Create lib directory for all platforms
-    lib_dir = target_dir / "lib"
-    lib_dir.mkdir(exist_ok=True)
-
     if system == "Windows":
         # Copy all DLL files
         for dll in source_path.glob("*.dll"):
@@ -159,13 +155,9 @@ def copy_platform_dependencies(source_dir, target_dir, build_type):
             logger.info(f"Copying DLL: {dll} → {target_dll}")
             shutil.copy2(dll, target_dll)
 
-        # Copy libs to lib directory
-        for lib in source_path.glob("*.lib"):
-            target_lib = lib_dir / lib.name
-            logger.info(f"Copying LIB: {lib} → {target_lib}")
-            shutil.copy2(lib, target_lib)
-
     elif system == "Darwin":
+        lib_dir = target_dir / "lib"
+        lib_dir.mkdir(exist_ok=True)
         # Copy dynamic libraries (.dylib files)
         for dylib in source_path.glob("*.dylib*"):
             # Skip symlinks in this case - they're handled by the bundle
@@ -175,6 +167,8 @@ def copy_platform_dependencies(source_dir, target_dir, build_type):
                 shutil.copy2(dylib, target_dylib)
 
     elif system == "Linux":
+        lib_dir = target_dir / "lib"
+        lib_dir.mkdir(exist_ok=True)
         # Copy shared libraries (.so files)
         for so_file in source_path.glob("*.so*"):
             # Copy versioned libraries to lib directory
