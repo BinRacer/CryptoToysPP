@@ -40,24 +40,79 @@ namespace CryptoToysPP::Gui {
 
     void MainFrame::InitWebView() {
         spdlog::debug("Initializing WebView...");
-
-        // Selecting WebView backend
         wxString backend = wxWebViewBackendDefault;
+// Platform-aware backend selection
+#if defined(__APPLE__) || defined(__WXOSX__)
+        // macOS-specific backend selection
+        if (wxWebView::IsBackendAvailable(wxWebViewBackendWebKit)) {
+            backend = wxWebViewBackendWebKit;
+            spdlog::debug("Selected backend: WebKit (macOS)");
+        }
+#elif defined(_WIN32) || defined(__WXMSW__)
+        // Windows-specific backend selection
         if (wxWebView::IsBackendAvailable(wxWebViewBackendEdge)) {
             backend = wxWebViewBackendEdge;
-            spdlog::debug("Selected backend: Edge WebView");
-        } else if (wxWebView::IsBackendAvailable(wxWebViewBackendWebKit)) {
+            spdlog::debug("Selected backend: Edge WebView (Windows)");
+        }
+#else
+        // Linux-specific backend selection
+        if (wxWebView::IsBackendAvailable(wxWebViewBackendWebKit)) {
             backend = wxWebViewBackendWebKit;
-            spdlog::debug("Selected backend: WebKit");
-        } else {
+            spdlog::debug("Selected backend: WebKit (Linux)");
+        }
+#endif
+        else {
             spdlog::debug("Using default backend");
         }
 
-        // Creating WebView component
-        webview = wxWebView::New(this, wxID_ANY, "", wxDefaultPosition,
-                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), backend,
-                                 wxBORDER_NONE);
+#if defined(__APPLE__) || defined(__WXOSX__)
+        // macOS-specific initialization for WebKit
+        // Create uninitialized WebView object
+        webview = wxWebView::New(backend);
+        if (!webview) {
+            spdlog::error("WebView allocation failed");
+            Close(true);
+            return;
+        }
 
+        // Register scheme handler BEFORE Create()
+        webview->RegisterHandler(
+                wxSharedPtr<wxWebViewHandler>(new Route::SchemeHandler()));
+        spdlog::debug("Registered custom scheme handler");
+
+        // Initialize the control
+        if (!webview->Create(this,                                // parent
+                             wxID_ANY,                            // id
+                             wxASCII_STR(wxWebViewDefaultURLStr), // url
+                             wxDefaultPosition,                   // pos
+                             wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), // size
+                             0,                                   // style
+                             wxASCII_STR(wxWebViewNameStr)))      // name
+        {
+            spdlog::error("WebKit Create() failed");
+            Close(true);
+            return;
+        }
+#else
+        // Non-Apple platform initialization
+        webview = wxWebView::New(this,                                // parent
+                                 wxID_ANY,                            // id
+                                 wxASCII_STR(wxWebViewDefaultURLStr), // url
+                                 wxDefaultPosition,                   // pos
+                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), // size
+                                 backend,                        // backend name
+                                 0,                              // style
+                                 wxASCII_STR(wxWebViewNameStr)); // name
+
+        // Register scheme handler AFTER creation
+        if (webview) {
+            webview->RegisterHandler(
+                    wxSharedPtr<wxWebViewHandler>(new Route::SchemeHandler()));
+            spdlog::debug("Registered custom scheme handler");
+        }
+#endif
+
+        // Handle creation failure for all platforms
         if (!webview) {
             spdlog::error("WebView creation failed");
             Close(true);
@@ -65,17 +120,13 @@ namespace CryptoToysPP::Gui {
         }
         spdlog::info("WebView created successfully");
 
-        // Configuring WebView features
-        webview->RegisterHandler(
-                wxSharedPtr<wxWebViewHandler>(new Route::SchemeHandler()));
-        spdlog::debug("Registered custom scheme handler");
-
+        // Common configuration for all platforms
         webview->SetUserAgent(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
         spdlog::debug("User agent configured");
 
-        // Binding event handlers
+        // Bind event handlers
         webview->Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED,
                       &MainFrame::OnScriptMessage, this);
         webview->AddScriptMessageHandler("CryptoToysPP");
@@ -84,7 +135,7 @@ namespace CryptoToysPP::Gui {
         webview->Bind(wxEVT_WEBVIEW_ERROR, &MainFrame::OnWebViewError, this);
         webview->Bind(wxEVT_WEBVIEW_LOADED, &MainFrame::OnWebViewLoaded, this);
 
-        // Initial configuration
+        // Initial page load and window setup
         webview->LoadURL("app://index.html");
         spdlog::info("Loading initial page: app://index.html");
 
@@ -99,7 +150,7 @@ namespace CryptoToysPP::Gui {
     }
 
     void MainFrame::OnScriptMessage(wxWebViewEvent &evt) {
-#ifdef __linux__
+#if defined(__linux__) || defined(__WXGTK__)
         spdlog::debug("Processing CryptoToysPP message");
 #else
         if (evt.GetMessageHandler() != "CryptoToysPP")
@@ -196,6 +247,6 @@ namespace CryptoToysPP::Gui {
 
     void MainFrame::OnWebViewLoaded(wxWebViewEvent &evt) {
         spdlog::debug("Page loaded: {} [status={}]", evt.GetURL().ToStdString(),
-                     evt.GetInt());
+                      evt.GetInt());
     }
 } // namespace CryptoToysPP::Gui
