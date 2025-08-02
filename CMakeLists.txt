@@ -114,7 +114,7 @@ else()
                 GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
                 GIT_TAG "v3.3.1"
                 PATCH_COMMAND
-                bash -c "patch -p1 < \"${CMAKE_SOURCE_DIR}/patches/macos/fix_memset_s.patch\""
+                bash -c "patch -p1 < \"${CMAKE_SOURCE_DIR}/patches/macOS/fix_memset_s.patch\""
                 CMAKE_ARGS
                 -DwxBUILD_SHARED=${wxBUILD_SHARED}
                 -DwxBUILD_MONOLITHIC=${wxBUILD_MONOLITHIC}
@@ -313,6 +313,24 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
                 # Remove wx directory (if exists)
                 COMMAND rm -rf "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS/wx"
         )
+    endif()
+endif()
+
+# ─── macOS RPATH Configuration ────────────────────────────────────────────────
+if(APPLE)
+    # Locate RPATH adjustment script
+    set(ADJUST_RPATH_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macOS/adjust_exe_rpath.sh")
+
+    # Only add if script exists
+    if(EXISTS ${ADJUST_RPATH_SCRIPT})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMENT "Adjusting macOS executable RPATH"
+                COMMAND bash ${ADJUST_RPATH_SCRIPT}
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+                VERBATIM
+        )
+    else()
+        message(WARNING "RPATH adjustment script not found at: ${ADJUST_RPATH_SCRIPT}")
     endif()
 endif()
 
