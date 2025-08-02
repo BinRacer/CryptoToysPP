@@ -83,11 +83,10 @@ namespace CryptoToysPP::Gui {
         // Initialize the control
         if (!webview->Create(this,                                // parent
                              wxID_ANY,                            // id
-                             wxASCII_STR(wxWebViewDefaultURLStr), // url
+                             "",                                  // url
                              wxDefaultPosition,                   // pos
                              wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), // size
-                             0,                                   // style
-                             wxASCII_STR(wxWebViewNameStr)))      // name
+                             wxBORDER_NONE))                      // style
         {
             spdlog::error("WebKit Create() failed");
             Close(true);
@@ -95,14 +94,9 @@ namespace CryptoToysPP::Gui {
         }
 #else
         // Non-Apple platform initialization
-        webview = wxWebView::New(this,                                // parent
-                                 wxID_ANY,                            // id
-                                 wxASCII_STR(wxWebViewDefaultURLStr), // url
-                                 wxDefaultPosition,                   // pos
-                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), // size
-                                 backend,                        // backend name
-                                 0,                              // style
-                                 wxASCII_STR(wxWebViewNameStr)); // name
+        webview = wxWebView::New(this, wxID_ANY, "", wxDefaultPosition,
+                                 wxSize(WINDOW_WIDTH, WINDOW_HEIGHT), backend,
+                                 wxBORDER_NONE);
 
         // Register scheme handler AFTER creation
         if (webview) {
