@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # ==============================================================================
 # CryptoToysPP Build Output Copier (Optimized)
-#   - Only copies executables and dependencies to dist directory
+#   - Enhanced macOS App Bundle handling
+#   - Improved Debug/Release directory separation
 #   - Cross-platform support
-#   - Clears target directory before copying in both Debug and Release modes
 # ==============================================================================
 import os
 import sys
@@ -23,7 +23,7 @@ logger = logging.getLogger('build_copier')
 
 def copy_build_output(source_dir, build_type):
     """
-    Copy build artifacts to dist directory
+    Copy build artifacts to dist directory with enhanced macOS app bundle support
 
     Args:
         source_dir: Path to build output directory
@@ -47,34 +47,110 @@ def copy_build_output(source_dir, build_type):
         # Ensure target directory exists
         target_dir.mkdir(parents=True, exist_ok=True)
 
-        # Platform-specific executable name
-        executable_name = "CryptoToysPP"
-        if platform.system() == "Windows":
-            executable_name += ".exe"
+        # Handle macOS app bundle specifically
+        if platform.system() == "Darwin":
+            return handle_macos_bundle(source_dir, target_dir, build_type)
 
-        # Copy executable
-        source_exe = Path(source_dir) / executable_name
-        target_exe = target_dir / executable_name
+        # Non-macOS platforms
+        return handle_other_platforms(source_dir, target_dir, build_type)
 
-        if source_exe.exists():
-            logger.info(f"Copying executable: {source_exe} → {target_exe}")
-            shutil.copy2(source_exe, target_exe)
-        else:
-            logger.warning(f"Missing executable: {source_exe}")
-
-        # Copy all platform-specific dependencies
-        copy_platform_dependencies(source_dir, target_dir)
-
-        logger.info(f"Successfully copied artifacts to dist/{build_type}")
-        return True
     except Exception as e:
-        logger.error(f"Operation failed: {str(e)}")
+        logger.error(f"Operation failed: {str(e)}", exc_info=True)
         return False
 
-def copy_platform_dependencies(source_dir, target_dir):
+def handle_macos_bundle(source_dir, target_dir, build_type):
+    """Handle macOS app bundle copy with enhanced detection"""
+    app_bundle_name = "CryptoToysPP.app"
+
+    # Check if source_dir is the app bundle itself
+    if source_dir.endswith(".app") and Path(source_dir).is_dir():
+        source_bundle = Path(source_dir)
+        logger.info(f"Found macOS app bundle at: {source_bundle}")
+    else:
+        # Check common locations for app bundle
+        possible_paths = [
+            Path(source_dir).parent / app_bundle_name,  # Build root directory
+            Path(source_dir).parent.parent / app_bundle_name,  # Build configuration directory
+            Path(source_dir) / app_bundle_name,  # Executable directory
+        ]
+
+        # Try to find the app bundle in possible locations
+        source_bundle = None
+        for path in possible_paths:
+            if path.exists() and path.is_dir():
+                source_bundle = path
+                logger.info(f"Found macOS app bundle at: {source_bundle}")
+                break
+
+    # If found, copy the bundle
+    if source_bundle:
+        target_bundle = target_dir / app_bundle_name
+        logger.info(f"Copying macOS app bundle: {source_bundle} → {target_bundle}")
+
+        # Copy entire bundle with symlinks
+        shutil.copytree(
+            source_bundle,
+            target_bundle,
+            symlinks=True,
+            ignore_dangling_symlinks=True
+        )
+
+        logger.info(f"App bundle successfully copied to dist/{build_type}")
+        return True
+
+    # Bundle not found - try fallback to executable copy
+    logger.warning("App bundle not found, falling back to executable copy")
+    executable_name = "CryptoToysPP"
+    source_exe = Path(source_dir) / executable_name
+
+    if source_exe.exists():
+        target_exe = target_dir / executable_name
+        logger.info(f"Copying executable: {source_exe} → {target_exe}")
+        shutil.copy2(source_exe, target_exe)
+
+        # Copy dependencies
+        copy_platform_dependencies(source_dir, target_dir, build_type)
+        logger.info(f"Successfully copied artifacts to dist/{build_type}")
+        return True
+
+    # Everything failed
+    logger.error(f"❌ macOS app bundle or executable not found")
+    logger.error("Searched paths:")
+    for path in possible_paths:
+        logger.error(f"  - {path.resolve()}")
+
+    return False
+
+def handle_other_platforms(source_dir, target_dir, build_type):
+    """Handle copy for Windows and Linux platforms"""
+    executable_name = "CryptoToysPP"
+    if platform.system() == "Windows":
+        executable_name += ".exe"
+
+    # Copy executable
+    source_exe = Path(source_dir) / executable_name
+    target_exe = target_dir / executable_name
+
+    if source_exe.exists():
+        logger.info(f"Copying executable: {source_exe} → {target_exe}")
+        shutil.copy2(source_exe, target_exe)
+    else:
+        logger.warning(f"Missing executable: {source_exe}")
+
+    # Copy all platform-specific dependencies
+    copy_platform_dependencies(source_dir, target_dir, build_type)
+
+    logger.info(f"Successfully copied artifacts to dist/{build_type}")
+    return True
+
+def copy_platform_dependencies(source_dir, target_dir, build_type):
     """Copy platform-specific dependencies"""
     system = platform.system()
     source_path = Path(source_dir)
+
+    # Create lib directory for all platforms
+    lib_dir = target_dir / "lib"
+    lib_dir.mkdir(exist_ok=True)
 
     if system == "Windows":
         # Copy all DLL files
@@ -83,25 +159,28 @@ def copy_platform_dependencies(source_dir, target_dir):
             logger.info(f"Copying DLL: {dll} → {target_dll}")
             shutil.copy2(dll, target_dll)
 
-    elif system == "Darwin":
-        # Copy dynamic libraries
-        for dylib in source_path.glob("*.dylib"):
-            target_dylib = target_dir / dylib.name
-            logger.info(f"Copying dylib: {dylib} → {target_dylib}")
-            shutil.copy2(dylib, target_dylib)
+        # Copy libs to lib directory
+        for lib in source_path.glob("*.lib"):
+            target_lib = lib_dir / lib.name
+            logger.info(f"Copying LIB: {lib} → {target_lib}")
+            shutil.copy2(lib, target_lib)
 
-        # Copy frameworks
-        for framework in source_path.glob("*.framework"):
-            target_framework = target_dir / framework.name
-            logger.info(f"Copying framework: {framework} → {target_framework}")
-            shutil.copytree(framework, target_framework, dirs_exist_ok=True)
+    elif system == "Darwin":
+        # Copy dynamic libraries (.dylib files)
+        for dylib in source_path.glob("*.dylib*"):
+            # Skip symlinks in this case - they're handled by the bundle
+            if not dylib.is_symlink():
+                target_dylib = lib_dir / dylib.name
+                logger.info(f"Copying dylib: {dylib} → {target_dylib}")
+                shutil.copy2(dylib, target_dylib)
 
     elif system == "Linux":
         # Copy shared libraries (.so files)
         for so_file in source_path.glob("*.so*"):
-            target_so = target_dir / so_file.name
+            # Copy versioned libraries to lib directory
+            target_so = lib_dir / so_file.name if so_file.name.endswith((".so", ".so.*")) else target_dir / so_file.name
             logger.info(f"Copying shared library: {so_file} → {target_so}")
-            shutil.copy2(so_file, target_so)
+            shutil.copy2(so_file, target_so, follow_symlinks=False)
 
 def main():
     parser = argparse.ArgumentParser(

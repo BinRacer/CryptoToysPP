@@ -12,6 +12,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 
+# ─── Build Configuration Handling ──────────────────────────────────────────────
+# Set default build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug or Release)" FORCE)
+endif()
+
 # ─── Vcpkg Dependency Management ───────────────────────────────────────────────
 set(USING_VCPKG OFF CACHE BOOL "Enable Vcpkg dependency management")
 if(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
@@ -102,7 +108,7 @@ else()
         list(APPEND wxBUILD_OPTIONS "--with-webkit=system")
     endif()
 
-    if (APPLE)
+    if(APPLE)
         FetchContent_Declare(
                 wxWidgets
                 GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
@@ -115,7 +121,7 @@ else()
                 -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
                 -DwxUSE_WEBVIEW=ON
         )
-    else ()
+    else()
         FetchContent_Declare(
                 wxWidgets
                 GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
@@ -126,7 +132,7 @@ else()
                 -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
                 -DwxUSE_WEBVIEW=ON
         )
-    endif ()
+    endif()
 
     FetchContent_MakeAvailable(wxWidgets)
 
@@ -143,6 +149,21 @@ if(NOT DEFINED wx_runtime_dir)
     set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 endif()
 
+# ─── macOS App Bundle Configuration ──────────────────────────────────────────
+if(APPLE)
+    # Set macOS bundle properties
+    set(MACOSX_BUNDLE_BUNDLE_NAME "CryptoToysPP")
+    set(MACOSX_BUNDLE_ICON_FILE "CryptoToysPP.icns")
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.BinRacer.${PROJECT_NAME}")
+    set(MACOSX_BUNDLE_INFO_STRING "CryptoToysPP")
+
+    # Configure Info.plist template
+    configure_file(
+            "${CMAKE_SOURCE_DIR}/icons/macOS/Info.plist.in"
+            "${CMAKE_BINARY_DIR}/Info.plist"
+    )
+endif()
+
 # ─── Source Collection ────────────────────────────────────────────────────────
 include_directories(${CMAKE_SOURCE_DIR}/src ${RESOURCES_DIR})
 file(GLOB_RECURSE SOURCE_FILES
@@ -152,8 +173,8 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Platform-specific resources
 if(WIN32)
-    set(APP_ICON_RC "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.rc")
-    set(APP_ICO_FILE "${CMAKE_SOURCE_DIR}/icons/CryptoToysPP.windows.ico")
+    set(APP_ICON_RC "${CMAKE_SOURCE_DIR}/icons/windows/CryptoToysPP.rc")
+    set(APP_ICO_FILE "${CMAKE_SOURCE_DIR}/icons/windows/CryptoToysPP.ico")
 
     if(EXISTS ${APP_ICON_RC} AND EXISTS ${APP_ICO_FILE})
         list(APPEND SOURCE_FILES ${APP_ICON_RC})
@@ -179,6 +200,15 @@ if(WIN32)
     )
 endif()
 
+# macOS App Bundle configuration
+if(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/Info.plist"
+            RESOURCE "${CMAKE_SOURCE_DIR}/icons/macOS/CryptoToysPP.icns"
+    )
+endif()
+
 # ─── Dependency Linking ───────────────────────────────────────────────────────
 target_link_libraries(${PROJECT_NAME}
         nlohmann_json::nlohmann_json
@@ -187,7 +217,35 @@ target_link_libraries(${PROJECT_NAME}
         ${WXWEBVIEW_TARGET}
 )
 
-# ─── Post-Build Operations ─────────────────────────────────────────────────────
+# ─── Static Library Detection Function ────────────────────────────────────────
+# Helper function: Check if a target is a static library
+function(is_static_library target result_var)
+    get_target_property(type ${target} TYPE)
+    if(type STREQUAL "STATIC_LIBRARY")
+        set(${result_var} TRUE PARENT_SCOPE)
+    else()
+        set(${result_var} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+# ─── Icon Validation and Fix ────────────────────────────────────────────────
+# Check icon file existence before adding to bundle
+if(APPLE)
+    set(APP_ICON_PATH "${CMAKE_SOURCE_DIR}/icons/macOS/CryptoToysPP.icns")
+    if(NOT EXISTS ${APP_ICON_PATH})
+        message(WARNING "macOS app icon not found at: ${APP_ICON_PATH}")
+    else()
+        # Ensure icon is copied to bundle resources with proper name
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMENT "Copying macOS icon to bundle"
+                COMMAND ${CMAKE_COMMAND} -E copy
+                "${APP_ICON_PATH}"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/${MACOSX_BUNDLE_ICON_FILE}"
+        )
+    endif()
+endif()
+
+# ─── Post-Build Operations ────────────────────────────────────────────────────
 # Unified runtime handling for all platforms
 set(RUNTIME_TARGETS)
 if(TARGET cryptopp::cryptopp)
@@ -207,17 +265,20 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
 
-    # Copy all runtime libraries
+    # Only copy dynamic libraries and modules (skip static libraries)
     foreach(target IN LISTS RUNTIME_TARGETS)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Copying ${target} runtime files"
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "$<TARGET_FILE:${target}>"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        )
+        is_static_library(${target} is_static)
+        if(NOT is_static)
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                    COMMENT "Copying ${target} runtime files"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${target}>"
+                    "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            )
+        endif()
 
         # For macOS, handle framework dependencies
-        if(APPLE AND TARGET ${target})
+        if(APPLE AND TARGET ${target} AND NOT is_static)
             get_target_property(target_type ${target} TYPE)
             if(target_type STREQUAL "SHARED_LIBRARY")
                 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -239,34 +300,38 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
                 "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
         )
     endif()
-endif()
 
-# macOS specific bundle handling
-if(APPLE)
-    # Copy wxWidgets frameworks if built from source
-    if(DEFINED wx_runtime_dir AND NOT wxWidgets_FOUND)
-        set_source_files_properties("${wx_runtime_dir}" PROPERTIES MACOSX_PACKAGE_LOCATION Frameworks)
-    endif()
-endif()
-
-# Linux specific - update linker paths
-if(LINUX)
-    if(TARGET spdlog::spdlogshared)
+    # Clean macOS bundle from unnecessary artifacts
+    if(APPLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Updating Linux linker paths"
-                COMMAND sh -c "patchelf --set-rpath \\$ORIGIN:$ORIGIN/../lib $<TARGET_FILE:${PROJECT_NAME}>"
+                COMMENT "Cleaning macOS bundle artifacts"
+                # Remove static libraries
+                COMMAND find "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS"
+                -name "*.a" -delete
+                # Remove wxWidgets cmake config files
+                COMMAND rm -f "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS/wxWidgets*.cmake"
+                # Remove wx directory (if exists)
+                COMMAND rm -rf "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS/wx"
         )
     endif()
 endif()
 
-# Build output copying to dist directory
+# ─── Build Output Handling ────────────────────────────────────────────────────
 set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
 
 if(EXISTS ${COPY_SCRIPT_PATH})
+    # Determine the correct source directory for copying
+    if(APPLE)
+        # For macOS, use the bundle directory instead of the executable directory
+        set(COPY_SOURCE_DIR "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>")
+    else()
+        set(COPY_SOURCE_DIR "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+    endif()
+
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMENT "Copying build output to dist directory"
             COMMAND "${Python_EXECUTABLE}" "${COPY_SCRIPT_PATH}"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            "${COPY_SOURCE_DIR}"
             "$<IF:$<CONFIG:>,Release,$<CONFIG>>"
             VERBATIM
     )
