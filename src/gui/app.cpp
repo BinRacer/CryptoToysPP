@@ -170,12 +170,6 @@ namespace CryptoToysPP::Gui {
             return false;
         }
 
-// macOS specific configuration
-#ifdef __WXOSX__
-        wxWebView::SetBackend(wxWebViewBackendWebKit);
-        spdlog::debug("macOS: Using WebKit backend");
-#endif
-
         // Create main application frame
         return new MainFrame();
     }

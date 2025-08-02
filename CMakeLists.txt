@@ -102,16 +102,31 @@ else()
         list(APPEND wxBUILD_OPTIONS "--with-webkit=system")
     endif()
 
-    FetchContent_Declare(
-            wxWidgets
-            GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
-            GIT_TAG "v3.3.1"
-            CMAKE_ARGS
-            -DwxBUILD_SHARED=${wxBUILD_SHARED}
-            -DwxBUILD_MONOLITHIC=${wxBUILD_MONOLITHIC}
-            -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
-            -DwxUSE_WEBVIEW=ON
-    )
+    if (APPLE)
+        FetchContent_Declare(
+                wxWidgets
+                GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
+                GIT_TAG "v3.3.1"
+                PATCH_COMMAND
+                bash -c "patch -p1 < \"${CMAKE_SOURCE_DIR}/patches/macos/fix_memset_s.patch\""
+                CMAKE_ARGS
+                -DwxBUILD_SHARED=${wxBUILD_SHARED}
+                -DwxBUILD_MONOLITHIC=${wxBUILD_MONOLITHIC}
+                -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
+                -DwxUSE_WEBVIEW=ON
+        )
+    else ()
+        FetchContent_Declare(
+                wxWidgets
+                GIT_REPOSITORY "https://github.com/wxWidgets/wxWidgets.git"
+                GIT_TAG "v3.3.1"
+                CMAKE_ARGS
+                -DwxBUILD_SHARED=${wxBUILD_SHARED}
+                -DwxBUILD_MONOLITHIC=${wxBUILD_MONOLITHIC}
+                -DwxBUILD_OPTIONS="${wxBUILD_OPTIONS}"
+                -DwxUSE_WEBVIEW=ON
+        )
+    endif ()
 
     FetchContent_MakeAvailable(wxWidgets)
 
