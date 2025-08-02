@@ -29,74 +29,102 @@
 #include "frame.h"
 #include <fstream>
 #include <map>
+#include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace CryptoToysPP::Gui {
-    // Helper function: Convert string to spdlog log level
-    spdlog::level::level_enum string_to_level(const std::string &level_str) {
-        static const std::map<std::string, spdlog::level::level_enum>
-                level_map = {{"trace", spdlog::level::trace},
-                             {"debug", spdlog::level::debug},
-                             {"info", spdlog::level::info},
-                             {"warn", spdlog::level::warn},
-                             {"error", spdlog::level::err},
-                             {"critical", spdlog::level::critical},
-                             {"off", spdlog::level::off}};
+    // Helper function to get user home directory
+    wxString GetUserConfigPath() {
+        wxString path = wxGetHomeDir();
 
-        auto it = level_map.find(level_str);
-        return level_map.contains(level_str)
-                ? level_map.at(level_str)
-                : spdlog::level::info; // Default to info
+        // Append .CryptoToysPP directory
+        wxString sep = wxFileName::GetPathSeparator();
+        path += sep + ".CryptoToysPP";
+        return path;
+    }
+
+    // Helper function to convert string to spdlog level using C++20 views
+    spdlog::level::level_enum string_to_level(std::string_view level_str_view) {
+        // Create a view with no whitespace and lowercase characters
+        auto transformed = level_str_view | std::views::filter([](char c) {
+                               return !std::isspace(c);
+                           }) |
+                std::views::transform([](char c) {
+                               return std::tolower(c);
+                           });
+
+        // Convert view to string for matching
+        std::string level_str(transformed.begin(), transformed.end());
+
+        // Determine log level using string comparisons
+        if (level_str == "trace")
+            return spdlog::level::trace;
+        if (level_str == "debug")
+            return spdlog::level::debug;
+        if (level_str == "info")
+            return spdlog::level::info;
+        if (level_str == "warn")
+            return spdlog::level::warn;
+        if (level_str == "err")
+            return spdlog::level::err;
+        if (level_str == "critical")
+            return spdlog::level::critical;
+        return spdlog::level::info; // Default level
     }
 
     bool App::OnInit() {
-        // Configuration file and log path settings
-        const wxString configDir =
-                wxGetCwd() + wxFileName::GetPathSeparator() + "config";
-        const wxString configPath =
-                configDir + wxFileName::GetPathSeparator() + "log_config.ini";
+        // Get user-specific config base directory
+        const wxString baseDir = GetUserConfigPath();
 
-        const wxString logDir =
-                wxGetCwd() + wxFileName::GetPathSeparator() + "logs";
-        const wxString logPath =
-                logDir + wxFileName::GetPathSeparator() + "app.log";
+        // Ensure base directory exists
+        if (!wxDirExists(baseDir) && !wxMkdir(baseDir)) {
+            wxLogError("Failed to create base directory: %s", baseDir);
+            return false;
+        }
 
-        // Ensure the configuration directory exists
+        // Setup config paths
+        wxString sep = wxFileName::GetPathSeparator();
+        const wxString configDir = baseDir + sep + "config";
+        const wxString configPath = configDir + sep + "log_config.ini";
+
+        // Setup log paths
+        const wxString logDir = baseDir + sep + "logs";
+        const wxString logPath = logDir + sep + "app.log";
+
+        // Ensure config directory exists
         if (!wxDirExists(configDir)) {
             if (!wxMkdir(configDir)) {
-                std::cerr << "Failed to create config directory: " << configDir
-                          << std::endl;
+                wxLogError("Failed to create config directory: %s", configDir);
             }
         }
 
-        // Ensure the log directory exists
+        // Ensure log directory exists (critical for application)
         if (!wxDirExists(logDir)) {
             if (!wxMkdir(logDir)) {
-                std::cerr << "Failed to create log directory: " << logDir
-                          << std::endl;
+                wxLogError("Failed to create log directory: %s", logDir);
                 return false;
             }
         }
 
-        // If config file doesn't exist, create default config file
+        // Create default config file if it doesn't exist
         if (!wxFileExists(configPath)) {
             wxFile configFile;
             if (configFile.Create(configPath, true) && configFile.IsOpened()) {
                 const std::string defaultConfig = "log_level=info\n";
                 configFile.Write(defaultConfig.c_str(), defaultConfig.size());
                 configFile.Close();
-                std::cout << "Created default config file with log_level=info: "
-                          << configPath << std::endl;
+                wxLogMessage(
+                        "Created default config file with log_level=info: %s",
+                        configPath);
             } else {
-                std::cerr << "Failed to create config file: " << configPath
-                          << std::endl;
+                wxLogError("Failed to create config file: %s", configPath);
             }
         }
 
-        // Read log level from configuration file
+        // Read log level from configuration file with C++20 features
         spdlog::level::level_enum log_level =
                 spdlog::level::info; // Default level
         try {
@@ -104,20 +132,20 @@ namespace CryptoToysPP::Gui {
             if (config_file.is_open()) {
                 std::string line;
                 while (std::getline(config_file, line)) {
-                    // Simple INI format parsing: key=value
-                    size_t pos = line.find('=');
-                    if (pos != std::string::npos &&
-                        line.substr(0, pos) == "log_level") {
-                        std::string level_str = line.substr(pos + 1);
-                        // Convert to lowercase and remove whitespace
-                        level_str.erase(std::ranges::remove_if(level_str,
-                                                               ::isspace)
-                                                .begin(),
-                                        level_str.end());
-                        std::ranges::transform(level_str, level_str.begin(),
-                                               ::tolower);
+                    // Use string_view to avoid unnecessary memory allocation
+                    std::string_view line_view = line;
 
-                        log_level = string_to_level(level_str);
+                    // Find key-value separator
+                    size_t pos = line_view.find('=');
+                    if (pos != std::string_view::npos &&
+                        line_view.substr(0, pos) == "log_level") {
+
+                        // Directly use substring view
+                        std::string_view level_str_view =
+                                line_view.substr(pos + 1);
+
+                        // Convert using C++20 string processing
+                        log_level = string_to_level(level_str_view);
                         break;
                     }
                 }
@@ -129,16 +157,16 @@ namespace CryptoToysPP::Gui {
                              "default log settings.");
             }
         } catch (const std::exception &e) {
-            std::cerr << "Error reading config file: " << e.what() << std::endl;
+            wxLogError("Error reading config file: {}", e.what());
         }
 
         try {
-            // Initialize logging system
-            std::shared_ptr<spdlog::sinks::sink> file_sink =
+            // Initialize logging system with file and console sinks
+            auto file_sink =
                     std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                            logPath.ToStdString(), 1024 * 1024 * 100, 10);
-
-            const auto console_sink =
+                            logPath.ToStdString(), 1024 * 1024 * 100,
+                            10); // 100MB per file, 10 files max
+            auto console_sink =
                     std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
             std::vector<spdlog::sink_ptr> sinks{file_sink, console_sink};
@@ -146,32 +174,31 @@ namespace CryptoToysPP::Gui {
                                                            sinks.begin(),
                                                            sinks.end());
 
-            // Configure log format (using the level read from config file)
+            // Configure log format and level
             logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
             logger->set_level(log_level);
             spdlog::set_default_logger(logger);
 
-            // Configure log flushing policy
-            spdlog::flush_on(spdlog::level::info); // Immediate flush for
-                                                   // important levels
-            spdlog::flush_every(
-                    std::chrono::seconds(5)); // Automatic flush every 5 seconds
+            // Configure flush policy
+            spdlog::flush_on(
+                    spdlog::level::warn); // Immediate flush for warning+ levels
+            spdlog::flush_every(std::chrono::seconds(5)); // Periodic flush
 
             spdlog::info("Logging system initialized successfully");
             spdlog::debug("Log file path: {}", logPath.ToStdString());
             spdlog::debug("Current log level: {}",
                           spdlog::level::to_string_view(log_level));
-            spdlog::debug("Log flush policy: immediate for INFO+ level, every "
-                          "5 seconds");
 
         } catch (const spdlog::spdlog_ex &ex) {
-            std::cerr << "Log initialization failed: " << ex.what()
-                      << std::endl;
+            wxLogError("Log initialization failed: {}", ex.what());
             return false;
         }
 
-        // Create main application frame
-        return new MainFrame();
+        // Create main application window
+        auto frame = new MainFrame();
+        frame->Show();
+
+        return true;
     }
 
     int App::OnExit() {
