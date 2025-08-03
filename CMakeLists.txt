@@ -28,13 +28,14 @@ if(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcp
     # Auto-detect target platform
     if(WIN32)
         set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "Vcpkg target triplet")
+        message(STATUS "Using Vcpkg with Windows target triplet")
     elseif(APPLE)
         set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "Vcpkg target triplet")
+        message(STATUS "Using Vcpkg with macOS target triplet")
     else()
         set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "Vcpkg target triplet")
+        message(STATUS "Using Vcpkg with Linux target triplet")
     endif()
-
-    message(STATUS "Using Vcpkg for dependency management")
 else()
     message(STATUS "Vcpkg not found, using system package manager")
 endif()
@@ -90,23 +91,22 @@ else()
     set(wxBUILD_SHARED ON CACHE BOOL "Shared library build")
     set(wxBUILD_MONOLITHIC OFF CACHE BOOL "Disable monolithic build")
 
-    set(wxBUILD_OPTIONS
-            "--disable-all"
-            "--enable-webview"
-            "--enable-unicode"
-    )
-
-    # Platform-specific options
+    # Platform-specific webview configurations
     if(WIN32)
-        list(APPEND wxBUILD_OPTIONS "--with-msw")
+        set(wxBUILD_OPTIONS "--with-msw")
+        set(WXWEBVIEW_DEPENDENCY "")
     elseif(APPLE)
-        list(APPEND wxBUILD_OPTIONS "--with-osx_cocoa")
+        set(wxBUILD_OPTIONS "--with-osx_cocoa")
+        set(WXWEBVIEW_DEPENDENCY "")
     else()
-        list(APPEND wxBUILD_OPTIONS "--with-gtk=3")
+        set(wxBUILD_OPTIONS "--with-gtk=3")
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.0)
         list(APPEND wxBUILD_OPTIONS "--with-webkit=system")
+        set(WXWEBVIEW_DEPENDENCY webkit2gtk-4.0)
     endif()
+
+    list(APPEND wxBUILD_OPTIONS "--disable-all" "--enable-webview" "--enable-unicode")
 
     if(APPLE)
         FetchContent_Declare(
@@ -149,21 +149,6 @@ if(NOT DEFINED wx_runtime_dir)
     set(wx_runtime_dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
 endif()
 
-# ─── macOS App Bundle Configuration ──────────────────────────────────────────
-if(APPLE)
-    # Set macOS bundle properties
-    set(MACOSX_BUNDLE_BUNDLE_NAME "CryptoToysPP")
-    set(MACOSX_BUNDLE_ICON_FILE "CryptoToysPP.icns")
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.BinRacer.${PROJECT_NAME}")
-    set(MACOSX_BUNDLE_INFO_STRING "CryptoToysPP")
-
-    # Configure Info.plist template
-    configure_file(
-            "${CMAKE_SOURCE_DIR}/icons/macOS/Info.plist.in"
-            "${CMAKE_BINARY_DIR}/Info.plist"
-    )
-endif()
-
 # ─── Source Collection ────────────────────────────────────────────────────────
 include_directories(${CMAKE_SOURCE_DIR}/src ${RESOURCES_DIR})
 file(GLOB_RECURSE SOURCE_FILES
@@ -173,6 +158,7 @@ file(GLOB_RECURSE SOURCE_FILES
 
 # Platform-specific resources
 if(WIN32)
+    # Windows icon resources
     set(APP_ICON_RC "${CMAKE_SOURCE_DIR}/icons/windows/CryptoToysPP.rc")
     set(APP_ICO_FILE "${CMAKE_SOURCE_DIR}/icons/windows/CryptoToysPP.ico")
 
@@ -192,45 +178,37 @@ list(APPEND SOURCE_FILES ${RESOURCE_HEADER} ${RESOURCE_SOURCE})
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 add_dependencies(${PROJECT_NAME} generate_resources)
 
-# Platform-specific executable config
+# ─── Platform-Specific Configuration ───────────────────────────────────────────
+# Windows configuration
 if(WIN32)
+    # Set Windows-specific properties
     set_target_properties(${PROJECT_NAME} PROPERTIES
             WIN32_EXECUTABLE TRUE
             LINK_FLAGS "/SUBSYSTEM:WINDOWS"
     )
-endif()
 
-# macOS App Bundle configuration
-if(APPLE)
+    # macOS configuration
+elseif(APPLE)
+    # macOS App Bundle configuration
+    set(MACOSX_BUNDLE_BUNDLE_NAME "CryptoToysPP")
+    set(MACOSX_BUNDLE_ICON_FILE "CryptoToysPP.icns")
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.BinRacer.${PROJECT_NAME}")
+    set(MACOSX_BUNDLE_INFO_STRING "CryptoToysPP")
+
+    # Configure Info.plist template
+    configure_file(
+            "${CMAKE_SOURCE_DIR}/icons/macOS/Info.plist.in"
+            "${CMAKE_BINARY_DIR}/Info.plist"
+    )
+
+    # Set macOS-specific properties
     set_target_properties(${PROJECT_NAME} PROPERTIES
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/Info.plist"
             RESOURCE "${CMAKE_SOURCE_DIR}/icons/macOS/CryptoToysPP.icns"
     )
-endif()
 
-# ─── Dependency Linking ───────────────────────────────────────────────────────
-target_link_libraries(${PROJECT_NAME}
-        nlohmann_json::nlohmann_json
-        cryptopp::cryptopp
-        spdlog::spdlog
-        ${WXWEBVIEW_TARGET}
-)
-
-# ─── Static Library Detection Function ────────────────────────────────────────
-# Helper function: Check if a target is a static library
-function(is_static_library target result_var)
-    get_target_property(type ${target} TYPE)
-    if(type STREQUAL "STATIC_LIBRARY")
-        set(${result_var} TRUE PARENT_SCOPE)
-    else()
-        set(${result_var} FALSE PARENT_SCOPE)
-    endif()
-endfunction()
-
-# ─── Icon Validation and Fix ────────────────────────────────────────────────
-# Check icon file existence before adding to bundle
-if(APPLE)
+    # macOS icons validation and configuration
     set(APP_ICON_PATH "${CMAKE_SOURCE_DIR}/icons/macOS/CryptoToysPP.icns")
     if(NOT EXISTS ${APP_ICON_PATH})
         message(WARNING "macOS app icon not found at: ${APP_ICON_PATH}")
@@ -243,10 +221,45 @@ if(APPLE)
                 "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/${MACOSX_BUNDLE_ICON_FILE}"
         )
     endif()
+
+    # macOS RPATH configuration
+    set(ADJUST_RPATH_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macOS/adjust_exe_rpath.sh")
+    if(EXISTS ${ADJUST_RPATH_SCRIPT})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMENT "Adjusting macOS executable RPATH"
+                COMMAND bash ${ADJUST_RPATH_SCRIPT}
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+                VERBATIM
+        )
+    else()
+        message(WARNING "RPATH adjustment script not found at: ${ADJUST_RPATH_SCRIPT}")
+    endif()
+
+    # Linux configuration
+else()
+    # Add Linux-specific configuration here if needed
+    message(STATUS "Configuring for Linux platform")
 endif()
 
-# ─── Post-Build Operations ────────────────────────────────────────────────────
-# Unified runtime handling for all platforms
+# ─── Dependency Linking ───────────────────────────────────────────────────────
+target_link_libraries(${PROJECT_NAME}
+        nlohmann_json::nlohmann_json
+        cryptopp::cryptopp
+        spdlog::spdlog
+        ${WXWEBVIEW_TARGET}
+)
+
+# ─── Static Library Detection Function ────────────────────────────────────────
+function(is_static_library target result_var)
+    get_target_property(type ${target} TYPE)
+    if(type STREQUAL "STATIC_LIBRARY")
+        set(${result_var} TRUE PARENT_SCOPE)
+    else()
+        set(${result_var} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+# ─── Runtime Library Handling ─────────────────────────────────────────────────
 set(RUNTIME_TARGETS)
 if(TARGET cryptopp::cryptopp)
     list(APPEND RUNTIME_TARGETS cryptopp::cryptopp)
@@ -265,7 +278,7 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
             COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
     )
 
-    # Only copy dynamic libraries and modules (skip static libraries)
+    # Copy dynamic libraries and modules (skip static libraries)
     foreach(target IN LISTS RUNTIME_TARGETS)
         is_static_library(${target} is_static)
         if(NOT is_static)
@@ -275,23 +288,23 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
                     "$<TARGET_FILE:${target}>"
                     "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
             )
-        endif()
 
-        # For macOS, handle framework dependencies
-        if(APPLE AND TARGET ${target} AND NOT is_static)
-            get_target_property(target_type ${target} TYPE)
-            if(target_type STREQUAL "SHARED_LIBRARY")
-                add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                        COMMAND ${CMAKE_INSTALL_NAME_TOOL} -change
-                        "$<TARGET_SONAME_FILE:${target}>"
-                        "@executable_path/$<TARGET_FILE_NAME:${target}>"
-                        "$<TARGET_FILE:${PROJECT_NAME}>"
-                )
+            # Handle macOS framework dependencies
+            if(APPLE)
+                get_target_property(target_type ${target} TYPE)
+                if(target_type STREQUAL "SHARED_LIBRARY")
+                    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                            COMMAND ${CMAKE_INSTALL_NAME_TOOL} -change
+                            "$<TARGET_SONAME_FILE:${target}>"
+                            "@executable_path/$<TARGET_FILE_NAME:${target}>"
+                            "$<TARGET_FILE:${PROJECT_NAME}>"
+                    )
+                endif()
             endif()
         endif()
     endforeach()
 
-    # Handle wxWidgets runtime directories (for all platforms)
+    # Handle wxWidgets runtime directories
     if(DEFINED wx_runtime_dir)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMENT "Copying wxWidgets runtime files"
@@ -301,36 +314,15 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
         )
     endif()
 
-    # Clean macOS bundle from unnecessary artifacts
+    # macOS bundle cleaning
     if(APPLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
                 COMMENT "Cleaning macOS bundle artifacts"
-                # Remove static libraries
                 COMMAND find "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS"
                 -name "*.a" -delete
-                # Remove wxWidgets cmake config files
                 COMMAND rm -f "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS/wxWidgets*.cmake"
-                # Remove wx directory (if exists)
                 COMMAND rm -rf "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/MacOS/wx"
         )
-    endif()
-endif()
-
-# ─── macOS RPATH Configuration ────────────────────────────────────────────────
-if(APPLE)
-    # Locate RPATH adjustment script
-    set(ADJUST_RPATH_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macOS/adjust_exe_rpath.sh")
-
-    # Only add if script exists
-    if(EXISTS ${ADJUST_RPATH_SCRIPT})
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Adjusting macOS executable RPATH"
-                COMMAND bash ${ADJUST_RPATH_SCRIPT}
-                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
-                VERBATIM
-        )
-    else()
-        message(WARNING "RPATH adjustment script not found at: ${ADJUST_RPATH_SCRIPT}")
     endif()
 endif()
 
@@ -340,7 +332,6 @@ set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
 if(EXISTS ${COPY_SCRIPT_PATH})
     # Determine the correct source directory for copying
     if(APPLE)
-        # For macOS, use the bundle directory instead of the executable directory
         set(COPY_SOURCE_DIR "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>")
     else()
         set(COPY_SOURCE_DIR "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
