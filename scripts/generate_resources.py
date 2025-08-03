@@ -21,7 +21,8 @@ def collect_ui_files(ui_dir: Path) -> Generator[Tuple[str, Path], None, None]:
         for file in files:
             file_path = Path(root) / file
             rel_path = os.path.relpath(file_path, ui_dir)
-            yield f"/{rel_path.replace('\\', '/')}", file_path
+            normalized_path = rel_path.replace('\\', '/')
+            yield f"/{normalized_path}", file_path
 
 
 def create_header_file(header_path: Path,
