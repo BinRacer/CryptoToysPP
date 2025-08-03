@@ -44,6 +44,11 @@ endif()
 find_package(nlohmann_json 3.12 CONFIG REQUIRED)
 find_package(cryptopp 8.9 CONFIG REQUIRED)
 find_package(spdlog 1.15 CONFIG REQUIRED)
+# Windows-specific webview dependency
+if(WIN32)
+    find_package(unofficial-webview2 CONFIG REQUIRED)
+    message(STATUS "Added Windows WebView2 dependency (unofficial package)")
+endif()
 
 # ─── Python Build Helpers ──────────────────────────────────────────────────────
 find_package(Python COMPONENTS Interpreter REQUIRED)
@@ -233,6 +238,7 @@ target_link_libraries(${PROJECT_NAME}
         cryptopp::cryptopp
         spdlog::spdlog
         ${WXWEBVIEW_TARGET}
+        $<$<PLATFORM_ID:Windows>:unofficial::webview2::webview2>
 )
 
 # ─── Static Library Detection Function ────────────────────────────────────────
@@ -255,6 +261,11 @@ if(TARGET spdlog::spdlogshared)
 endif()
 if(TARGET ${WXWEBVIEW_TARGET})
     list(APPEND RUNTIME_TARGETS ${WXWEBVIEW_TARGET})
+endif()
+# Add Windows WebView2 target for runtime copying
+if(WIN32 AND TARGET unofficial::webview2::webview2)
+    list(APPEND RUNTIME_TARGETS unofficial::webview2::webview2)
+    message(STATUS "Added Windows WebView2 target to runtime copy list")
 endif()
 
 if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
