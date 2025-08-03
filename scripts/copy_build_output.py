@@ -207,7 +207,7 @@ def copy_linux_dependencies(source_dir, target_dir):
     lib_dir = target_dir / "lib"
     lib_dir.mkdir(exist_ok=True)
 
-    source_path = Path(source_dir)
+    source_path = Path(source_dir) / "lib"
     for so_file in source_path.glob("*.so*"):
         # Copy versioned libraries to lib directory
         target_so = lib_dir / so_file.name
