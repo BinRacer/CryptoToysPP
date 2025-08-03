@@ -221,20 +221,6 @@ elseif(APPLE)
                 "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/${MACOSX_BUNDLE_ICON_FILE}"
         )
     endif()
-
-    # macOS RPATH configuration
-    set(ADJUST_RPATH_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macOS/adjust_exe_rpath.sh")
-    if(EXISTS ${ADJUST_RPATH_SCRIPT})
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                COMMENT "Adjusting macOS executable RPATH"
-                COMMAND bash ${ADJUST_RPATH_SCRIPT}
-                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
-                VERBATIM
-        )
-    else()
-        message(WARNING "RPATH adjustment script not found at: ${ADJUST_RPATH_SCRIPT}")
-    endif()
-
     # Linux configuration
 else()
     # Add Linux-specific configuration here if needed
@@ -325,6 +311,22 @@ if(RUNTIME_TARGETS OR DEFINED wx_runtime_dir)
         )
     endif()
 endif()
+
+# ─── Platform-Specific shell script ───────────────────────────────────────────
+if(APPLE)
+    # macOS RPATH configuration
+    set(ADJUST_RPATH_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/macOS/adjust_exe_rpath.sh")
+    if(EXISTS ${ADJUST_RPATH_SCRIPT})
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMENT "Adjusting macOS executable RPATH"
+                COMMAND bash ${ADJUST_RPATH_SCRIPT}
+                "$<TARGET_BUNDLE_DIR:${PROJECT_NAME}>"
+                VERBATIM
+        )
+    else()
+        message(WARNING "RPATH adjustment script not found at: ${ADJUST_RPATH_SCRIPT}")
+    endif()
+endif ()
 
 # ─── Build Output Handling ────────────────────────────────────────────────────
 set(COPY_SCRIPT_PATH "${CMAKE_SOURCE_DIR}/scripts/copy_build_output.py")
