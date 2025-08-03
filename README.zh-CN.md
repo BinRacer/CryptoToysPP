@@ -103,6 +103,8 @@ sudo apt update
 # 安装基础依赖
 sudo apt install -y \
     build-essential \
+    binutils \
+    patchelf \
     pkg-config \
     libgtk-3-dev \
     libwebkit2gtk-4.0-dev \
