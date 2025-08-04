@@ -198,8 +198,8 @@ CryptoToysPP/
 │    ├── Debug                    
 │    └── Release
 ├── scripts/
-│    ├── copy_build_output.py     # 🔄 Resource generator
-│    └── generate_resources.py    # 📁 Build deployment assistant
+│    ├── copy_build_output.py     # 📁 Build deployment assistant
+│    └── generate_resources.py    # 🔄 Resource generator
 ├── src
 │    ├── algorithm/               # Algorithm core
 │    │    ├── advance/            # AES, RSA algorithms

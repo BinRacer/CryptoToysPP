@@ -199,8 +199,8 @@ CryptoToysPP/
 │    ├── Debug                    
 │    └── Release
 ├── scripts/
-│    ├── copy_build_output.py     # 🔄 资源生成器
-│    └── generate_resources.py    # 📁 构建部署助手
+│    ├── copy_build_output.py     # 📁 构建部署助手
+│    └── generate_resources.py    # 🔄 资源生成器
 ├── src
 │    ├── algorithm/               # 算法核心
 │    │    ├── advance/            # AES、RSA算法
